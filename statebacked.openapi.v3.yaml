@@ -1,0 +1,284 @@
+openapi: "3.0.2"
+
+info:
+  title: State Backed API
+  description: >
+    The official State Backed API for running XState backends as a service.
+  version: 1.0.0
+
+servers:
+  - url: https://api.statebacked.dev
+    description: Production server
+
+x-topics:
+  - title: Authentication
+    content: |
+      # End-user JWT authentication
+
+      Pass the JWT token in the `Authorization` header as `Bearer <token>`.
+
+      ## Use
+
+      State Backed authenticates requests to ensure that they include a valid JWT
+      signed by one of your StateBacked keys.
+
+      State Backed also passes the user data from the `act` claim of your JWT to your
+      machine's `allowRead` and `allowWrite` functions to allow you to authorize operations
+      on machine instances.
+
+      ## Generation
+
+      Use the key (`sbk_...`) and secret (`sbsec_...`) generated from running `smply keys create`
+      to sign a JWT token with an `act` claim that includes data about your end user
+      (e.g. a `sub` claim with the user's ID).
+
+      ```
+      HS256("sbsec_...", { "kid": "sbk_...", "alg": "HS256" }, { "aud": "https://api.statebacked.dev/", "act": { "sub": "..." }, ... })
+      ```
+
+      You can also use our token generation library:
+      ```
+      import { signToken } from "@statebacked/token";
+
+      const jwt = await signToken({
+        {
+          stateBackedKeyId: process.env.STATEBACKED_KEY_ID,
+          stateBackedSecretKey: process.env.STATEBACKED_SECRET_KEY,
+        },
+        {
+          sub: "your-user-id"
+        },
+        {
+          expires: { in: "7d" },
+          issuer: "https://your-domain.com/"
+        }
+      });
+      ```
+paths:
+  /machines:
+    summary: Machine definition operations.
+
+    description: |
+      Machine definitions name a logical machine from which you can create
+      multiple *machine instances*.
+
+      Machine definitions have multiple *machine definition versions*, one
+      of which is named as the current version.
+
+    post:
+      summary: Create a new machine definition.
+
+      security:
+        - BearerAuth:
+          - "machines.write"
+
+      description: |
+        Note: No instances of a machine definition can be created until
+        you create a machine definition version for it.
+
+      requestBody:
+        $ref: "#/components/requestBodies/CreateMachineDefinition"
+
+      responses:
+        "201":
+          description: The machine definition was created successfully.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /machines/:machineSlug/v:
+    summary: Machine definition version operations.
+    description: |
+      Machine definition versions are comprised of an XState machine,
+      an `allowRead` function, and an `allowWrite` function.
+
+      They are immutable and identified by an ID.
+      The `clientInfo` field is informational only.
+    post:
+      summary: Provisionally create a new machine definition version.
+      description: |
+        This operation returns a code upload URL and fields that can be used
+        to upload the code for the machine definition version.
+
+        Once the code is uploaded, call `PUT /machines/:machineSlug/v/:machineDefinitionVersionId`
+        with the `machineDefinitionVersionId` returned from this operation to
+        finalize the creation of the machine definition version.
+      parameters:
+        - name: machineSlug
+          in: path
+          description: The slug/name for the machine definition this version is related to.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineSlug"
+      security:
+        - BearerAuth:
+          - "machine-versions.write"
+      requestBody:
+        $ref: "#/components/requestBodies/ProvisionallyCreateMachineDefinitionVersion"
+      responses:
+        "200":
+          description: |
+            The machine definition version was provisionally created successfully.
+
+            Now, post the code for the machine definition version as follows:
+
+            ```
+            const { codeUploadFields, codeUploadUrl } = await provisionalVersionCreationResponse.json();
+            const uploadForm = new FormData();
+            for (const [key, value] of Object.entries(codeUploadFields)) {
+              uploadForm.append(key, value as string);
+            }
+            uploadForm.set("content-type", "application/javascript");
+            uploadForm.append(
+              "file",
+              new Blob(["javascript-code-here"], {
+                type: "application/javascript",
+              }),
+              "your-file-name.js",
+            );
+            const uploadRes = await fetch(
+              codeUploadUrl,
+              {
+                method: "POST",
+                body: uploadForm,
+              },
+            );
+            ```
+            
+            And then finalize the creation of the machine definition version by
+            calling `PUT /machines/:machineSlug/v/:machineDefinitionVersionId` with
+            the `machineDefinitionVersionId` returned from this operation.
+          content:
+            "application/json":
+              schema:
+                type: object
+                properties:
+                  machineDefinitionVersionId:
+                    type: string
+                    description: The signed machine definition version ID.
+                  codeUploadUrl:
+                    type: string
+                    description: The URL to upload the machine definition version code to.
+                  codeUploadFields:
+                    type: object
+                    description: The fields that must be included as form data in the upload request.
+                    additionalProperties:
+                      type: string
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /machines/:machineSlug/v:
+    put:
+      summary: Finalize creation of a machine definition version.
+      description: |
+        After retrieving the `machineDefinitionVersionId` and code upload
+        instructions from `POST /machines/:machineSlug/v`, and after
+        uploading the code as described, call this operation to finalize
+        the creation of the machine definition version.
+
+        After this operation, you can create instances of the machine
+        definition with  this version.
+      parameters:
+        - name: machineSlug
+          in: path
+          description: The slug/name for the machine definition this version is related to.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineSlug"
+      security:
+        - BearerAuth:
+          - "machine-versions.write"
+      requestBody:
+        $ref: "#/components/requestBodies/CreateMachineDefinitionVersion"
+      responses:
+        "200":
+          $ref: "#/components/responses/MachineDefinitionVersionCreated"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  requestBodies:
+    CreateMachineDefinition:
+      description: Request to create a machine definition.
+      content:
+        "application/json":
+          schema:
+            type: object
+            required:
+              - slug
+            properties:
+              slug:
+                $ref: "#/components/schemas/MachineSlug"
+    ProvisionallyCreateMachineDefinitionVersion:
+      description: Request to provisionally create a machine definition version.
+      content:
+        "application/json":
+          schema:
+            type: object
+    CreateMachineDefinitionVersion:
+      description: Finalize creation of a machine definition version.
+      content:
+        "application/json":
+          schema:
+            type: object
+            properties:
+              clientInfo:
+                type: string
+                description: |
+                  Informational only. Any string that describes this version.
+                  Good uses would be a semantic version number or git commit.
+              makeCurrent:
+                type: boolean
+                description: |
+                  Whether to make this version the current version for the machine definition.
+                  If `true`, the current version will be set to this version.
+                  If `false`, the current version will not be changed.
+  responses:
+    BadRequest:
+      description: The request was malformed.
+      content:
+        "application/json":
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                description: A description of the error.
+              code:
+                type: string
+                summary: A code specifying the type of error.
+                description: |
+                  - `specify-org` indicates that the user has access to multiple orgs and the operation requires specifying an organization. Pass the `x-statebacked-org-id` header to specify an org ID.
+                enum:
+                  - specify-org
+    Forbidden:
+      description: The request was unauthorized.
+      content:
+        "application/json":
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                description: A description of the error.
+              code:
+                type: string
+                summary: A code specifying the type of error.
+                enum:
+                  - missing-user
+                  - missing-org
+                  - missing-scope
+
+  schemas:
+    MachineSlug:
+      type: string
+      description: An identifier for the machine definition. Must be unique within your organization.
+      pattern: "^[a-z0-9-_]+$"
+      minLength: 1
+      example: "my-machine"

@@ -1,0 +1,23 @@
+{
+  "name": "@statebacked/api-spec",
+  "version": "1.0.0",
+  "description": "OpenAPI specification for StateBacked.dev XState backend as a service",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "bump": "bump"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/statebacked/api-spec.git"
+  },
+  "author": "adam@statebacked.dev",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/statebacked/api-spec/issues"
+  },
+  "homepage": "https://github.com/statebacked/api-spec#readme",
+  "devDependencies": {
+    "bump-cli": "^2.7.0"
+  }
+}
