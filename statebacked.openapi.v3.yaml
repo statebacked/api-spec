@@ -54,31 +54,36 @@ x-topics:
         }
       });
       ```
+
+tags:
+  - name: Machines
+    description: Machine definition operations.
+  - name: Machine versions
+    description: Machine definition version operations.
+  - name: Machine instances
+    description: Machine instance operations.
+
 paths:
   /machines:
     summary: Machine definition operations.
-
     description: |
       Machine definitions name a logical machine from which you can create
       multiple *machine instances*.
 
       Machine definitions have multiple *machine definition versions*, one
       of which is named as the current version.
-
     post:
       summary: Create a new machine definition.
-
+      tags:
+        - Machines
       security:
         - BearerAuth:
           - "machines.write"
-
       description: |
         Note: No instances of a machine definition can be created until
         you create a machine definition version for it.
-
       requestBody:
         $ref: "#/components/requestBodies/CreateMachineDefinition"
-
       responses:
         "201":
           description: The machine definition was created successfully.
@@ -88,12 +93,14 @@ paths:
           $ref: "#/components/responses/BadRequest"
   /machines/{machineSlug}:
     post:
+      tags:
+        - Machine instances
       summary: Create a new machine instance.
       description: |
         Create a new instance of the machine definition with the given slug.
 
         The `allowWrite` function for the machine definition version will be called
-        to authorize the initial transition and, if it failes, a 403 with code
+        to authorize the initial transition and, if it fails, a 403 with code
         `rejected-by-machine-authorizer` will be returned.
 
         Otherwise, the state of the machine instance after the initial transition
@@ -107,6 +114,9 @@ paths:
         one transition successfully, a 200 with the current state will be returned,
         the child services will be stopped, and error events will be delivered for
         each stopped service before the next event is sent.
+
+        If a machine instance for this (`machineSlug`, instance `slug`) already exists,
+        a 409 will be returned.
       parameters:
         - name: machineSlug
           in: path
@@ -128,10 +138,61 @@ paths:
                 $ref: "#/components/schemas/State"
         "403":
           $ref: "#/components/responses/Forbidden"
-        "400":
-          $ref: "#/components/responses/BadRequest"
         "409":
           $ref: "#/components/responses/Conflict"
+  /machines/{machineSlug}/i/{instanceSlug}/events:
+    post:
+      tags:
+        - Machine instances
+      summary: Send an event to a machine instance.
+      description: |
+        Send an event to the machine instance that was previously created by
+        calling `POST /machines/{machineSlug}`.
+
+        The `allowWrite` function for the machine definition version will be called
+        to authorize the send and, if it fails, a 403 with code
+        `rejected-by-machine-authorizer` will be returned.
+
+        Otherwise, the state of the machine instance after any transitions resulting
+        from the event will be returned.
+
+        The request will wait for the machine to settle before returning a response.
+        Settling means that the machine has reached a stable state and has no
+        child services running.
+
+        All top-level events have a 10 second timeout for the machine to settle.
+
+        If the machine does not settle within 10 seconds but has completed at least
+        one transition successfully, a 200 with the current state will be returned,
+        the child services will be stopped, and error events will be delivered for
+        each stopped service before the next event is sent.
+      parameters:
+        - name: machineSlug
+          in: path
+          description: The slug/name for the machine definition.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineSlug"
+        - name: instanceSlug
+          in: path
+          description: The slug/name for the machine instance.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineInstanceSlug"
+      security:
+        - BearerAuth:
+          - "instances.write"
+      requestBody:
+        $ref: "#/components/requestBodies/SendMachineInstanceEvent"
+      responses:
+        "200":
+          description: The event was delivered successfully.
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/State"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /machines/{machineSlug}/v:
     summary: Machine definition version operations.
     description: |
@@ -141,6 +202,8 @@ paths:
       They are immutable and identified by an ID.
       The `clientInfo` field is informational only.
     post:
+      tags:
+        - Machine versions
       summary: Provisionally create a new machine definition version.
       description: |
         This operation returns a code upload URL and fields that can be used
@@ -215,6 +278,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
   /machines/{machineSlug}/v/{signedMachineVersionId}:
     put:
+      tags:
+        - Machine versions
       summary: Finalize creation of a machine definition version.
       description: |
         After retrieving the `machineDefinitionVersionId` and code upload
@@ -312,6 +377,18 @@ components:
                   Defaults to `{}`.
               machineVersionId:
                 $ref: "#/components/schemas/MachineVersionId"
+    SendMachineInstanceEvent:
+      description: |
+        Request to send an event to an instance of a machine.
+      content:
+        "application/json":
+          schema:
+            type: object
+            required:
+              - event
+            properties:
+              event:
+                $ref: "#/components/schemas/Event"
 
   responses:
     BadRequest:
@@ -442,3 +519,29 @@ components:
             This includes all context under the `public` key.
           type: object
           additionalProperties: true
+    Event:
+      description: |
+        An event to send to a machine instance.
+      anyOf:
+        - $ref: "#/components/schemas/EventWithPayload"
+        - $ref: "#/components/schemas/EventWithoutPayload"
+    EventWithPayload:
+      type: object
+      description: |
+        An event to send to a machine instance with a payload.
+
+        Event types and payloads are user-defined for a given machine definition.
+      required:
+        - type
+      additionalProperties: true
+      properties:
+        type:
+          type: string
+          description: |
+            The type of the event.
+    EventWithoutPayload:
+      type: string
+      description: |
+        An event to send to a machine.
+
+        Event types are user-defined for a given machine definition.
