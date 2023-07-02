@@ -384,11 +384,11 @@ paths:
               schema:
                 type: object
                 required:
-                  - machineDefinitionVersionId
+                  - machineVersionId
                   - codeUploadUrl
                   - codeUploadFields
                 properties:
-                  machineDefinitionVersionId:
+                  machineVersionId:
                     $ref: "#/components/schemas/SignedMachineVersionId"
                   codeUploadUrl:
                     type: string
