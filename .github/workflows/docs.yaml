@@ -1,0 +1,28 @@
+name: Doc deployment
+
+on:
+  push:
+    branches: 
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm run bump -- deploy ./statebacked.openapi.v3.yaml --doc state-backed --token uau28n54EFsw29jQ2gzPzV4VvofMUQzF 
+        with:
+          env:
+            BUMP_TOKEN: ${{ secrets.BUMP_TOKEN }}
