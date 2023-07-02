@@ -421,7 +421,16 @@ paths:
         $ref: "#/components/requestBodies/CreateMachineDefinitionVersion"
       responses:
         "200":
-          $ref: "#/components/responses/MachineDefinitionVersionCreated"
+          description: The request was malformed.
+          content:
+            "application/json":
+              schema:
+                type: object
+                required:
+                  - machineVersionId
+                properties:
+                  machineVersionId:
+                    $ref: "#/components/schemas/MachineVersionId"
 
 components:
   securitySchemes:
