@@ -57,11 +57,75 @@ x-topics:
 
 tags:
   - name: Machines
-    description: Machine definition operations.
+    description: |
+      # Machine definition operations.
+
+      Machine definitions name a logical machine from which you can create
+      multiple *machine instances*.
+
+      Machine definitions have multiple *machine definition versions*, one
+      of which is named as the current version.
   - name: Machine versions
-    description: Machine definition version operations.
+    description: |
+      # Machine definition version operations.
+
+      Machine definition versions contain the actual machine definition,
+      which consists of a single self-contained javascript file that
+      default exports an [XState](https://xstate.js.org/docs/) state
+      machine as well as an `allowRead` and `allowWrite` function.
+
+      The `allowRead` and `allowWrite` functions are called to authorize
+      read and write operations on machine instances, respectively.
+      Write authorization implies the authority to read the result of
+      your write.
+
+      Anything stored in the machine's context under the `public` key
+      will be exposed to authorized readers and writers as `publicContext`.
+
+      ## Example machine definition
+
+      ```js
+      import type {
+        AllowRead,
+        AllowWrite,
+      } from "@statebacked/machine-def";
+      import { createMachine } from "xstate";
+
+      export const allowRead: AllowRead = (
+        { machineInstanceName, authContext },
+      ) => machineInstanceName === authContext.sub;
+
+      export const allowWrite: AllowWrite = (
+        { machineInstanceName, authContext },
+      ) => machineInstanceName === authContext.sub;
+
+      export default createMachine(...);
+      ```
   - name: Machine instances
-    description: Machine instance operations.
+    description: |
+      # Machine instance operations.
+      
+      Machine instances are instances of a machine definition.
+
+      If you have a machine definition that controls a user onboarding flow,
+      you would want a machine instance for each user.
+
+      If you have a machine definition that controls access to a collaborative
+      document, you would want a machine instance for each document.
+
+      Machine instances have names that are unique within a machine definition.
+
+      You can send events to machine instances to trigger transitions and can
+      read the state of an instance.
+
+      ## Consistency guarantees
+
+      Processing for a machine instance is coordinated such that there is
+      a single, linearizable history of events and state transitions.
+
+      ## Limits
+
+      Machine context (represented as JSON) may not exceed 400kb.
 
 paths:
   /machines:
