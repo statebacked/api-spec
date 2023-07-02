@@ -369,6 +369,10 @@ paths:
             "application/json":
               schema:
                 type: object
+                required:
+                  - machineDefinitionVersionId
+                  - codeUploadUrl
+                  - codeUploadFields
                 properties:
                   machineDefinitionVersionId:
                     $ref: "#/components/schemas/SignedMachineVersionId"
@@ -484,7 +488,11 @@ components:
                   The initial context for the machine instance.
                   Defaults to `{}`.
               machineVersionId:
-                $ref: "#/components/schemas/MachineVersionId"
+                allOf:
+                  - $ref: "#/components/schemas/MachineVersionId"
+                  - description: |
+                      The ID of the machine definition version to use for this instance.
+                      If not provided, creates an instance of the current version of the machine definition.
     SendMachineInstanceEvent:
       description: |
         Request to send an event to an instance of a machine.
@@ -530,10 +538,10 @@ components:
                 type: string
                 summary: A code specifying the type of error.
                 enum:
-                  - missing-user
-                  - missing-org
                   - missing-scope
                   - rejected-by-machine-authorizer
+                  - missing-user
+                  - missing-org
     Conflict:
       description: The resource already exists.
       content:
