@@ -140,6 +140,50 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "409":
           $ref: "#/components/responses/Conflict"
+  /machines/{machineSlug}/i/{instanceSlug}:
+    get:
+      tags:
+        - Machine instances
+      summary: Get the current state of a machine instance.
+      description: |
+        Retrieve the state of the machine instance that was previously created by
+        calling `POST /machines/{machineSlug}` and may have had events sent to it
+        by calling `POST /machines/{machineSlug}/i/{instanceSlug}/events`.
+
+        The `allowRead` function for the machine definition version will be called
+        to authorize the read and, if it fails, a 403 with code
+        `rejected-by-machine-authorizer` will be returned.
+
+        Otherwise, the current state of the machine instance will be returned.
+
+        Obviously, the state returned may be out of date by the time it is returned
+        because reads are non-blocking but a the returned state will always be
+        self-consistent.
+      parameters:
+        - name: machineSlug
+          in: path
+          description: The slug/name for the machine definition.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineSlug"
+        - name: instanceSlug
+          in: path
+          description: The slug/name for the machine instance.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineInstanceSlug"
+      security:
+        - BearerAuth:
+          - "instances.read"
+      responses:
+        "200":
+          description: The state was retrieved successfully.
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/State"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /machines/{machineSlug}/i/{instanceSlug}/events:
     post:
       tags:
