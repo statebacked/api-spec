@@ -86,8 +86,53 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "400":
           $ref: "#/components/responses/BadRequest"
+  /machines/{machineSlug}:
+    post:
+      summary: Create a new machine instance.
+      description: |
+        Create a new instance of the machine definition with the given slug.
 
-  /machines/:machineSlug/v:
+        The `allowWrite` function for the machine definition version will be called
+        to authorize the initial transition and, if it failes, a 403 with code
+        `rejected-by-machine-authorizer` will be returned.
+
+        Otherwise, the state of the machine instance after the initial transition
+        will be returned.
+
+        All top-level events have a 10 second timeout for the machine to settle.
+        Settling means that the machine has reached a stable state and has no
+        child services running.
+
+        If the machine does not settle within 10 seconds but has completed at least
+        one transition successfully, a 200 with the current state will be returned,
+        the child services will be stopped, and error events will be delivered for
+        each stopped service before the next event is sent.
+      parameters:
+        - name: machineSlug
+          in: path
+          description: The slug/name for the machine definition to create an instance of.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineSlug"
+      security:
+        - BearerAuth:
+          - "instances.write"
+      requestBody:
+        $ref: "#/components/requestBodies/CreateMachineInstance"
+      responses:
+        "200":
+          description: The machine instance was created successfully.
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/State"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /machines/{machineSlug}/v:
     summary: Machine definition version operations.
     description: |
       Machine definition versions are comprised of an XState machine,
@@ -155,8 +200,7 @@ paths:
                 type: object
                 properties:
                   machineDefinitionVersionId:
-                    type: string
-                    description: The signed machine definition version ID.
+                    $ref: "#/components/schemas/SignedMachineVersionId"
                   codeUploadUrl:
                     type: string
                     description: The URL to upload the machine definition version code to.
@@ -169,7 +213,7 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "400":
           $ref: "#/components/responses/BadRequest"
-  /machines/:machineSlug/v:
+  /machines/{machineSlug}/v/{signedMachineVersionId}:
     put:
       summary: Finalize creation of a machine definition version.
       description: |
@@ -187,6 +231,12 @@ paths:
           required: true
           schema:
             $ref: "#/components/schemas/MachineSlug"
+        - name: signedMachineVersionId
+          in: path
+          description: The signed machine version id returned from `POST /machines/:machineSlug/v`.
+          required: true
+          schema:
+            $ref: "#/components/schemas/SignedMachineVersionId"
       security:
         - BearerAuth:
           - "machine-versions.write"
@@ -239,6 +289,30 @@ components:
                   Whether to make this version the current version for the machine definition.
                   If `true`, the current version will be set to this version.
                   If `false`, the current version will not be changed.
+    CreateMachineInstance:
+      description: |
+        Request to create an instance of a machine.
+
+        If machineVersionId is provided, creates an instance of the machine
+        definition version with that ID. Otherwise, creates an instance of the
+        current version of the machine definition.
+      content:
+        "application/json":
+          schema:
+            type: object
+            required:
+              - slug
+            properties:
+              slug:
+                $ref: "#/components/schemas/MachineInstanceSlug"
+              context:
+                type: object
+                description: |
+                  The initial context for the machine instance.
+                  Defaults to `{}`.
+              machineVersionId:
+                $ref: "#/components/schemas/MachineVersionId"
+
   responses:
     BadRequest:
       description: The request was malformed.
@@ -274,11 +348,97 @@ components:
                   - missing-user
                   - missing-org
                   - missing-scope
+                  - rejected-by-machine-authorizer
+    Conflict:
+      description: The resource already exists.
+      content:
+        "application/json":
+          schema:
+            type: object
 
   schemas:
     MachineSlug:
       type: string
       description: An identifier for the machine definition. Must be unique within your organization.
-      pattern: "^[a-z0-9-_]+$"
+      pattern: "^[a-z0-9_-]+$"
       minLength: 1
       example: "my-machine"
+    SignedMachineVersionId:
+      type: string
+      description: The signed machine definition version ID.
+    MachineVersionId:
+      type: string
+      description: The ID of a machine definition version.
+    MachineInstanceSlug:
+      type: string
+      description: An identifier for the machine instance. Must be unique within the instances for the associated machine definition.
+      minLength: 1
+      example: "user-1234"
+    State:
+      type: object
+      description: |
+        The state of a machine instance.
+      examples:
+        Simple state without public context:
+          value:
+            state: "idle"
+            states:
+              - idle
+        Hierarchical state with public context:
+          value:
+            state:
+              parent:
+                nested1: "idle"
+            states:
+              - parent
+              - nested1
+              - idle
+            publicContext:
+              user: "u_1234"
+        Parallel state with public context:
+          values:
+            state:
+              parent:
+                nested1: "idle"
+                nested2: "idle"
+            states:
+              - parent
+              - nested1
+              - nested2
+              - idle
+            publicContext:
+              connectedDocuments:
+                - doc_1234
+                - doc_5678
+      required:
+        - state
+        - states
+      properties:
+        state:
+          description: |
+            The state of the machine instance.
+
+            For a machine instance with in a single, top-level state, this will be a string.
+            For a machine instance in a hierarchically-nested state, it will be an object
+            mapping parent states to child states.
+            For a machine instance in a parallel state, it will be an object with multiple
+            keys.
+          anyof:
+            - type: string
+            - type: object
+              additionalProperties:
+                $ref: "#/components/schemas/State"
+        states:
+          description: |
+            A flattened array of the states that the machine instance is in.
+            This may be easier to work with than the `state` property.
+          type: array
+          items:
+            type: string
+        publicContext:
+          description: |
+            The public context of the machine instance.
+
+            This includes all context under the `public` key.
+          type: object
+          additionalProperties: true
