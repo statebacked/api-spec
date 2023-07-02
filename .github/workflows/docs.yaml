@@ -23,6 +23,5 @@ jobs:
       - run: npm ci
 
       - run: npm run bump -- deploy ./statebacked.openapi.v3.yaml --doc state-backed --token uau28n54EFsw29jQ2gzPzV4VvofMUQzF 
-        with:
-          env:
-            BUMP_TOKEN: ${{ secrets.BUMP_TOKEN }}
+        env:
+          BUMP_TOKEN: ${{ secrets.BUMP_TOKEN }}
