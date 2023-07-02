@@ -2,13 +2,27 @@ openapi: "3.0.2"
 
 info:
   title: State Backed API
-  description: >
+  summary: >
     The official State Backed API for running XState backends as a service.
+  description: |
+    State Backed turns any XState state machine into a stateful backend.
+    Spawn instances of your machines, authorize requests,
+    send events, and read your instances' state without any servers
+    or datastores to manage.
+
+    View the full State Backed documentation at https://docs.statebacked.dev.
+
+    Download the `smply` CLI at https://npmjs.com/package/smply
+    or at https://github.com/state-backed/smply/releases.
   version: 1.0.0
 
 servers:
   - url: https://api.statebacked.dev
     description: Production server
+
+externalDocs:
+  description: State Backed documentation
+  url: https://docs.statebacked.dev
 
 x-topics:
   - title: Authentication
