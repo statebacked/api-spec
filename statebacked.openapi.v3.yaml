@@ -2,9 +2,9 @@ openapi: "3.0.2"
 
 info:
   title: State Backed API
-  summary: >
-    The official State Backed API for running XState backends as a service.
   description: |
+    The official State Backed API for running XState backends as a service.
+
     State Backed turns any XState state machine into a stateful backend.
     Spawn instances of your machines, authorize requests,
     send events, and read your instances' state without any servers
@@ -542,8 +542,9 @@ components:
                 description: A description of the error.
               code:
                 type: string
-                summary: A code specifying the type of error.
                 description: |
+                  A code specifying the type of error.
+
                   - `specify-org` indicates that the user has access to multiple orgs and the operation requires specifying an organization. Pass the `x-statebacked-org-id` header to specify an org ID.
                 enum:
                   - specify-org
@@ -559,7 +560,7 @@ components:
                 description: A description of the error.
               code:
                 type: string
-                summary: A code specifying the type of error.
+                description: A code specifying the type of error.
                 enum:
                   - missing-scope
                   - rejected-by-machine-authorizer
@@ -639,7 +640,7 @@ components:
             mapping parent states to child states.
             For a machine instance in a parallel state, it will be an object with multiple
             keys.
-          anyof:
+          anyOf:
             - type: string
             - type: object
               additionalProperties:
