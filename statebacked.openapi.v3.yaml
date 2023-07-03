@@ -591,6 +591,20 @@ components:
       description: An identifier for the machine instance. Must be unique within the instances for the associated machine definition.
       minLength: 1
       example: "user-1234"
+    StateValue:
+      description: |
+        The state of the machine instance.
+
+        For a machine instance with in a single, top-level state, this will be a string.
+        For a machine instance in a hierarchically-nested state, it will be an object
+        mapping parent states to child states.
+        For a machine instance in a parallel state, it will be an object with multiple
+        keys.
+      oneOf:
+        - type: string
+        - type: object
+          additionalProperties:
+            $ref: "#/components/schemas/StateValue"
     State:
       type: object
       description: |
@@ -632,19 +646,7 @@ components:
         - states
       properties:
         state:
-          description: |
-            The state of the machine instance.
-
-            For a machine instance with in a single, top-level state, this will be a string.
-            For a machine instance in a hierarchically-nested state, it will be an object
-            mapping parent states to child states.
-            For a machine instance in a parallel state, it will be an object with multiple
-            keys.
-          anyOf:
-            - type: string
-            - type: object
-              additionalProperties:
-                $ref: "#/components/schemas/State"
+          $ref: "#/components/schemas/StateValue"
         states:
           description: |
             A flattened array of the states that the machine instance is in.
@@ -662,7 +664,7 @@ components:
     Event:
       description: |
         An event to send to a machine instance.
-      anyOf:
+      oneOf:
         - $ref: "#/components/schemas/EventWithPayload"
         - $ref: "#/components/schemas/EventWithoutPayload"
     EventWithPayload:
