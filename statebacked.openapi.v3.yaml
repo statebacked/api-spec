@@ -510,6 +510,7 @@ components:
                 description: |
                   The initial context for the machine instance.
                   Defaults to `{}`.
+                additionalProperties: true
               machineVersionId:
                 allOf:
                   - $ref: "#/components/schemas/MachineVersionId"
