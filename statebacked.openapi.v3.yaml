@@ -355,6 +355,47 @@ paths:
                 $ref: "#/components/schemas/State"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /machines/{machineSlug}/i/{instanceSlug}/v:
+    put:
+      tags:
+        - Machine instances
+      summary: Update the desired machine version for an existing instance.
+      description: |
+        Set the desired machine version for an existing instance.
+
+        The instance will not be upgraded immediately but will be upgraded
+        the next time an event is sent to it from a settled state.
+
+        A 400 with code "no-migration-path" will be returned if there is
+        no path through the set of existing migrations from the current
+        instance version to the desired instance version.
+      parameters:
+        - name: machineSlug
+          in: path
+          description: The slug/name for the machine definition.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineSlug"
+        - name: instanceSlug
+          in: path
+          description: The slug/name for the machine instance.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineInstanceSlug"
+      security:
+        - BearerAuth:
+          - "instances.write"
+      requestBody:
+        $ref: "#/components/requestBodies/UpdateDesiredMachineInstanceVersion"
+      responses:
+        "201":
+          description: |
+            The desired version was recorded successfully and will be applied
+            the next time an event is sent to the instance from a settled state.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /machines/{machineSlug}/v:
     summary: Machine definition version operations.
     description: |
@@ -712,6 +753,18 @@ components:
             properties:
               event:
                 $ref: "#/components/schemas/Event"
+    UpdateDesiredMachineInstanceVersion:
+      description: |
+        Request to update the machine version for an existing instance.
+      content:
+        "application/json":
+          schema:
+            type: object
+            required:
+              - targetMachineVersionId
+            properties:
+              event:
+                $ref: "#/components/schemas/MachineVersionId"
 
   responses:
     BadRequest:
