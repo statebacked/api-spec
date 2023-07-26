@@ -844,10 +844,16 @@ components:
         For a machine instance in a parallel state, it will be an object with multiple
         keys.
       oneOf:
-        - type: string
-        - type: object
-          additionalProperties:
-            $ref: "#/components/schemas/StateValue"
+        - $ref: "#/components/schemas/SimpleStateValue"
+        - $ref: "#/components/schemas/CompoundStateValue"
+    SimpleStateValue:
+      type: string
+      description: A simple state
+    CompoundStateValue:
+      type: object
+      description: A compound state
+      additionalProperties:
+        $ref: "#/components/schemas/StateValue"
     State:
       type: object
       description: |
