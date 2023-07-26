@@ -134,7 +134,7 @@ tags:
 
       export const upgradeState: UpgradeState = (oldState, oldContext) => {
         // oldState is an array describing a full path to a state in the old version of the machine
-        // e.g. ["authenticationPage", "login"] if login is a child state of authenticationPage.
+        // (e.g. ["authenticationPage", "login"] if login is a child state of authenticationPage).
         // oldContext is the most recent context of the machine. It *may not* be a valid context in
         // the given state because upgradeState will be called to migrate history states in
         // addition to current states.
@@ -145,7 +145,7 @@ tags:
 
       export const upgradeContext: UpgradeContext = (oldStates, newStates, oldContext) => {
         // oldStates is an array of state paths from the old version of the machine.
-        // (e.g. [["a", "b"], ["a", "c"]] if "a" is a parallel state and is in both "b" and "c".
+        // (e.g. [["a", "b"], ["a", "c"]] if "a" is a parallel state and is in both "b" and "c").
         // newStates is an array of state paths from the new version of the machine.
         // oldContext is the context associated with oldStates in the old version of the machine.
 
