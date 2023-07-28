@@ -422,6 +422,12 @@ paths:
           required: true
           schema:
             $ref: "#/components/schemas/MachineSlug"
+        - name: gzip
+          in: query
+          description: Will the code be uploaded gzipped?
+          required: false
+          schema:
+            type: boolean
       security:
         - BearerAuth:
           - "machine-versions.write"
@@ -545,6 +551,12 @@ paths:
           required: true
           schema:
             $ref: "#/components/schemas/MachineSlug"
+        - name: gzip
+          in: query
+          description: Will the code be uploaded gzipped?
+          required: false
+          schema:
+            type: boolean
       security:
         - BearerAuth:
           - "machine-versions.write"
