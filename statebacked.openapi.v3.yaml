@@ -928,7 +928,7 @@ components:
     MachineSlug:
       type: string
       description: An identifier for the machine definition. Must be unique within your organization.
-      pattern: "^[a-z0-9_-]+$"
+      pattern: "^[a-zA-Z0-9_-]{1,128}$"
       minLength: 1
       example: "my-machine"
     SignedMachineVersionId:
@@ -946,6 +946,7 @@ components:
     MachineInstanceSlug:
       type: string
       description: An identifier for the machine instance. Must be unique within the instances for the associated machine definition.
+      pattern: "^[a-zA-Z0-9_-]{1,128}$"
       minLength: 1
       example: "user-1234"
     StateValue:
