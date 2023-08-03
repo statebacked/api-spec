@@ -180,6 +180,17 @@ tags:
       ## Limits
 
       Machine context (represented as JSON) may not exceed 400kb.
+  - name: Logs
+    description: |
+      # Logs produced while processing transitions and migrations.
+
+      State Backed collects any logs you emit while processing
+      transitions and migrations and makes them available via this
+      endpoint.
+
+      State Backed also emits some logs of its own to provide context.
+
+      We *highly* recommend logging structured JSON objects.
 
 paths:
   /machines:
@@ -661,6 +672,89 @@ paths:
                 properties:
                   machineVersionId:
                     $ref: "#/components/schemas/MachineVersionMigrationId"
+  /logs:
+    get:
+      tags:
+        - Logs
+      summary: Retrieve logs for a time range.
+      description: |
+        Retrieve logs starting at the `from` time, optionally
+        filtered by `to`, `machine`, `instance`, and `version`.
+
+        You will receive at most 100 log entries (each consisting
+        of potentially multiple lines) but you may receive fewer
+        entries due to various partitioning schemes.
+
+        You may retry the call by specifying the returned `maxTimestamp`
+        as the new `from` time to retrieve additional logs.
+      parameters:
+        - name: from
+          in: query
+          description: The ISO-8601 timestamp of the earilest-timestamped log to retrieve
+          required: true
+          schema:
+            $ref: "#/components/schemas/Timestamp"
+        - name: to
+          in: query
+          description: The ISO-8601 timestamp of the latest-timestamped log to retrieve
+          required: false
+          schema:
+            $ref: "#/components/schemas/Timestamp"
+        - name: machine
+          in: query
+          description: The name of the machine to retrieve logs for
+          required: false
+          schema:
+            $ref: "#/components/schemas/MachineSlug"
+        - name: instance
+          in: query
+          description: The name of the machine instance to retrieve logs for
+          required: false
+          schema:
+            $ref: "#/components/schemas/MachineInstanceSlug"
+        - name: version
+          in: query
+          description: The id of the machine version to retrieve logs for
+          required: false
+          schema:
+            $ref: "#/components/schemas/MachineVersionId"
+      security:
+        - BearerAuth:
+          - "logs.read"
+      responses:
+        "200":
+          description: The requested logs.
+          content:
+            "application/json":
+              schema:
+                type: object
+                required:
+                  - maxTimestamp
+                properties:
+                  maxTimestamp:
+                    $ref: "#/components/schemas/Timestamp"
+                  logs:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        timestamp:
+                          $ref: "#/components/schemas/Timestamp"
+                        orgId:
+                          type: string
+                          description: The ID of the organization that owns the machines that produced this log.
+                        machineName:
+                          $ref: "#/components/schemas/MachineSlug"
+                        instanceName:
+                          $ref: "#/components/schemas/MachineInstanceSlug"
+                        machineVersionId:
+                          $ref: "#/components/schemas/MachineVersionId"
+                        outputType:
+                          type: string
+                          enum: ["stdout", "stderr"]
+                        log:
+                          type: string
+                          description: Raw log output
 
 components:
   securitySchemes:
@@ -948,3 +1042,8 @@ components:
         An event to send to a machine.
 
         Event types are user-defined for a given machine definition.
+    Timestamp:
+      type: string
+      description: |
+        A timestamp
+      format: date-time
