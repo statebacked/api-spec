@@ -730,6 +730,7 @@ paths:
                 type: object
                 required:
                   - maxTimestamp
+                  - logs
                 properties:
                   maxTimestamp:
                     $ref: "#/components/schemas/Timestamp"
