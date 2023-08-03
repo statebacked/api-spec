@@ -737,6 +737,14 @@ paths:
                     type: array
                     items:
                       type: object
+                      required:
+                        - timestamp
+                        - orgId
+                        - machineName
+                        - instanceName
+                        - machineVersionId
+                        - outputType
+                        - log
                       properties:
                         timestamp:
                           $ref: "#/components/schemas/Timestamp"
