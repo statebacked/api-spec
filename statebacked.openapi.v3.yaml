@@ -191,6 +191,12 @@ tags:
       State Backed also emits some logs of its own to provide context.
 
       We *highly* recommend logging structured JSON objects.
+  - name: Realtime
+    description: |
+      # Realtime (websocket) endpoints
+
+      State Backed allows you to subscribe to machine instance updates
+      via websockets.
 
 paths:
   /machines:
@@ -764,6 +770,21 @@ paths:
                         log:
                           type: string
                           description: Raw log output
+  /rt:
+    get:
+      tags:
+        - Realtime
+      summary: Subscribe to real-time updates of machine instances.
+      description: |
+        This is a websocket endpoint.
+        Connect and send WSToServerMsg messages and receive WSToClientMsg messages.
+      parameters:
+        - name: token
+          in: query
+          description: JWT signed with your State Backed key. Same as the token typically passed in the authorization header.
+          required: true
+          schema:
+            type: string
 
 components:
   securitySchemes:
@@ -1057,3 +1078,101 @@ components:
       description: |
         A timestamp
       format: date-time
+    WSToClientInstanceUpdateMsg:
+      type: object
+      description: |
+        Websocket message sent to the client when an instance has been updated.
+        Clients will receive instance update messages after subscribing to an instance.
+      required:
+        - type
+        - machineName
+        - machineInstanceName
+        - publicContext
+        - state
+      properties:
+        type:
+          type: string
+          const: instance-update
+        machineName:
+          $ref: "#/components/schemas/MachineSlug"
+        machineInstanceName:
+          $ref: "#/components/schemas/MachineInstanceSlug"
+        publicContext:
+          type: object
+          additionalProperties: true
+        state:
+          $ref: "#/components/schemas/StateValue"
+    WSToClientErrorMsg:
+      type: object
+      description: |
+        Websocket message sent to the client to indicate that an error has occurred
+        in processing a previously-sent message, identified by `requestId`.
+      required:
+        - type
+        - requestId
+        - status
+      properties:
+        type:
+          type: string
+          const: error
+        requestId:
+          type: string
+          description: Request ID that caused the error.
+        status:
+          type: number
+          description: HTTP status code corresponding to the error.
+        code:
+          type: string
+          description: Error code
+    WSToClientMsg:
+      description: Websocket messages that may be sent to the client
+      oneOf:
+        - $ref: "#/components/schemas/WSToClientInstanceUpdateMsg"
+        - $ref: "#/components/schemas/WSToClientErrorMsg"
+    WSToServerSubscribeToInstanceMsg:
+      type: object
+      description: |
+        Websocket message sent to the server to subscribe to a machine instance
+      properties:
+        type:
+          type: string
+          const: subscribe-to-instance
+        requestId:
+          type: string
+          description: ID for this request. Must be unique per connection. Used to associate errors with the request.
+        machineName:
+          $ref: "#/components/schemas/MachineSlug"
+        machineInstanceName:
+          $ref: "#/components/schemas/MachineInstanceSlug"
+    WSToServerUnsubscribeFromInstanceMsg:
+      type: object
+      description: |
+        Websocket message sent to the server to unsubscribe from a machine instance
+      properties:
+        type:
+          type: string
+          const: unsubscribe-from-instance
+        requestId:
+          type: string
+          description: ID for this request. Must be unique per connection. Used to associate errors with the request.
+        machineName:
+          $ref: "#/components/schemas/MachineSlug"
+        machineInstanceName:
+          $ref: "#/components/schemas/MachineInstanceSlug"
+    WSToServerPingMsg:
+      type: object
+      description: |
+        Websocket message sent to the server to keep the connection and subscriptions alive.
+        Must be sent at least every 5 minutes or the connection and subscriptions will be canceled
+        and will need to be reestablished.
+      properties:
+        type:
+          type: string
+          const: ping
+    WSToServerMsg:
+      description: Websocket messages that may be sent to the server.
+      oneOf:
+        - $ref: "#/components/schemas/WSToServerSubscribeToInstanceMsg"
+        - $ref: "#/components/schemas/WSToServerUnsubscribeFromInstanceMsg"
+        - $ref: "#/components/schemas/WSToServerPingMsg"
+
