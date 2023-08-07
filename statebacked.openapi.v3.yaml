@@ -413,6 +413,57 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /machines/{machineSlug}/i/{instanceSlug}/status:
+    put:
+      tags:
+        - Machine instances
+      summary: Update the status of a machine instance
+      description: |
+        Set the status of the machine.
+
+        Machines in the 'paused' status will reject any events sent to them
+        with a 409 error with a code of "invalid-state".
+
+        'running' instances will accept events normally.
+
+        It is **dangerous** to set an instance's status to 'paused'!
+        You will drop events and, because delayed events are only retried
+        5 times (with ~30 seconds between each try), some delayed events
+        may be dropped and **never** sent to your machine.
+
+        This exists **purely** to stop a runaway machine instance that is
+        stuck in a loop of creating too many events.
+
+        This endpoint requires admin access.
+      parameters:
+        - name: machineSlug
+          in: path
+          description: The slug/name for the machine definition.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineSlug"
+        - name: instanceSlug
+          in: path
+          description: The slug/name for the machine instance.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineInstanceSlug"
+      security:
+        - BearerAuth:
+          - "instances.admin"
+      requestBody:
+        $ref: "#/components/requestBodies/UpdateMachineInstanceStatus"
+      responses:
+        "201":
+          description: |
+            The desired version was recorded successfully and will be applied
+            the next time an event is sent to the instance from a settled state.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /machines/{machineSlug}/v:
     summary: Machine definition version operations.
     description: |
@@ -901,6 +952,18 @@ components:
             properties:
               targetMachineVersionId:
                 $ref: "#/components/schemas/MachineVersionId"
+    UpdateMachineInstanceStatus:
+      description: |
+        Request to update the status of an existing instance.
+      content:
+        "application/json":
+          schema:
+            type: object
+            required:
+              - status
+            properties:
+              status:
+                $ref: "#/components/schemas/MachineInstanceStatus"
 
   responses:
     BadRequest:
@@ -945,6 +1008,15 @@ components:
         "application/json":
           schema:
             type: object
+            properties:
+              code:
+                type: string
+                description: Machine-readable identifier for the type of error
+                enum:
+                  - invalid-state
+              error:
+                type: string
+                description: Human-readable identifier for the error
 
   schemas:
     MachineSlug:
@@ -971,6 +1043,12 @@ components:
       pattern: "^[a-zA-Z0-9_-]{1,128}$"
       minLength: 1
       example: "user-1234"
+    MachineInstanceStatus:
+      type: string
+      description: The status of a machine instance.
+      enum:
+        - running
+        - paused
     StateValue:
       description: |
         The state of the machine instance.
