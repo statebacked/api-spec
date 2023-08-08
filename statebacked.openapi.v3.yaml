@@ -275,6 +275,52 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "409":
           $ref: "#/components/responses/Conflict"
+    delete:
+      tags:
+        - Machines
+      summary: Delete a machine and any versions and migrations associated with it.
+      description: |
+        Delete a machine and any versions and migrations associated with it.
+
+        *THIS IS OBVIOUSLY A DANGEROUS OPERATION AND WILL INTENTIONALLY CAUSE DATA LOSS*
+
+        If any instances exist for the machine, a 409 error will be returned with an `invalid-state` code.
+        You can delete the instances and then retry the machine deletion.
+
+        All versions associated with the machine and all migrations between those versions
+        will be deleted.
+        
+        There is no option to recover data after a machine is deleted.
+
+        To prevent accidental deletion, we require two validation parameters:
+          - hmacSha256OfMachineNameWithMachineNameKey - `base64urlEncode(hmacSha256(key = "machine name", "machine name"))`
+          - dangerDataWillBeDeletedForever - true
+
+        A 400 error with the `parameter` set to the name of the incorrect parameter will be returned
+        if the validation parameters are incorrect.
+
+        This endpoint requires admin access.
+      parameters:
+        - name: machineSlug
+          in: path
+          description: The slug/name for the machine definition to delete.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineSlug"
+      security:
+        - BearerAuth:
+          - "machines.admin"
+      requestBody:
+        $ref: "#/components/requestBodies/DeleteMachine"
+      responses:
+        "200":
+          description: The machine instance was deleted successfully.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /machines/{machineSlug}/i/{instanceSlug}:
     get:
       tags:
@@ -317,6 +363,53 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/State"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    delete:
+      tags:
+        - Machine instances
+      summary: Delete a machine instance and any transitions, state, or pending upgrades associated with it.
+      description: |
+        Delete a machine instance and any transitions, state, or pending upgrades associated with it.
+
+        *THIS IS OBVIOUSLY A DANGEROUS OPERATION AND WILL INTENTIONALLY CAUSE DATA LOSS*
+
+        All historical transitions associated with the machine and all current state and context
+        will be deleted.
+        
+        There is no option to recover data after an instance is deleted.
+
+        To prevent accidental deletion, we require two validation parameters:
+          - hmacSha256OfMachineInstanceNameWithMachineNameKey - `base64urlEncode(hmacSha256(key = "machine name", "machine instance name"))`
+          - dangerDataWillBeDeletedForever - true
+
+        A 400 error with the `parameter` set to the name of the incorrect parameter will be returned
+        if the validation parameters are incorrect.
+
+        This endpoint requires admin access.
+      parameters:
+        - name: machineSlug
+          in: path
+          description: The slug/name for the machine definition to delete.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineSlug"
+        - name: instanceSlug
+          in: path
+          description: The slug/name for the machine instance.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineInstanceSlug"
+      security:
+        - BearerAuth:
+          - "instances.admin"
+      requestBody:
+        $ref: "#/components/requestBodies/DeleteMachineInstance"
+      responses:
+        "200":
+          description: The machine instance was deleted successfully.
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "403":
           $ref: "#/components/responses/Forbidden"
   /machines/{machineSlug}/i/{instanceSlug}/events:
@@ -964,6 +1057,44 @@ components:
             properties:
               status:
                 $ref: "#/components/schemas/MachineInstanceStatus"
+    DeleteMachine:
+      description: Validation parameters to prove that you really do want to delete the machine.
+      content:
+        "application/json":
+          schema:
+            type: object
+            description: Validation parameters to prove that you really do want to delete the machine.
+            properties:
+              dangerDataWillBeDeletedForever:
+                type: boolean
+                description: Just to ensure that you understand the ramifications of this action.
+                const: true
+              hmacSha256OfMachineNameWithMachineNameKey:
+                type: string
+                description: |
+                  This parameter serves to verify that you have read the documentation prior to
+                  deleting a machine and have taken the time to consider whether you really want to do so.
+
+                  Provide `base64urlEncode(hmacSha256(key = "machine name", "machine name"))`
+    DeleteMachineInstance:
+      description: Validation parameters to prove that you really do want to delete the instance.
+      content:
+        "application/json":
+          schema:
+            type: object
+            description: Validation parameters to prove that you really do want to delete the instance.
+            properties:
+              dangerDataWillBeDeletedForever:
+                type: boolean
+                description: Just to ensure that you understand the ramifications of this action.
+                const: true
+              hmacSha256OfMachineInstanceNameWithMachineNameKey:
+                type: string
+                description: |
+                  This parameter serves to verify that you have read the documentation prior to
+                  deleting a machine and have taken the time to consider whether you really want to do so.
+
+                  Provide `base64urlEncode(hmacSha256(key = "machine name", "machine instance name"))`
 
   responses:
     BadRequest:
@@ -982,8 +1113,13 @@ components:
                   A code specifying the type of error.
 
                   - `specify-org` indicates that the user has access to multiple orgs and the operation requires specifying an organization. Pass the `x-statebacked-org-id` header to specify an org ID.
+                  - `invalid-parameter` indicates that one of the provided parameters was incorrect
                 enum:
                   - specify-org
+                  - invalid-parameter
+              parameter:
+                type: string
+                description: The name of the invalid parameter
     Forbidden:
       description: The request was unauthorized.
       content:
