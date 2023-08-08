@@ -1064,6 +1064,9 @@ components:
           schema:
             type: object
             description: Validation parameters to prove that you really do want to delete the machine.
+            required:
+              - dangerDataWillBeDeletedForever
+              - hmacSha256OfMachineNameWithMachineNameKey
             properties:
               dangerDataWillBeDeletedForever:
                 type: boolean
@@ -1083,6 +1086,9 @@ components:
           schema:
             type: object
             description: Validation parameters to prove that you really do want to delete the instance.
+            required:
+              - dangerDataWillBeDeletedForever
+              - hmacSha256OfMachineInstanceNameWithMachineNameKey
             properties:
               dangerDataWillBeDeletedForever:
                 type: boolean
