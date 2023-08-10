@@ -1112,7 +1112,7 @@ paths:
           -H 'authorization: Bearer sbsk_...'
           --data '{
             "keyId": "sbk_...", // ID for a previously-created State Backed key
-            "service": "your-app", any identifier for your token provider
+            "service": "your-app", // any identifier for your token provider
             "mapping": {
               "sub.$": "$.sub",
               "email.$": "$.email",
