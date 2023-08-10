@@ -1061,6 +1061,21 @@ paths:
       responses:
         "204":
           description: The identity provider was created or updated.
+    delete:
+      tags:
+        - Tokens
+      summary: Delete an identity provider
+      description: |
+        Delete the identity provider and immediately reject any token exchange
+        requests that provide tokens signed by the idp.
+      security:
+        - BearerAuth:
+          - "tokens.admin"
+      requestBody:
+        $ref: "#/components/requestBodies/DeleteIdentityProvider"
+      responses:
+        "204":
+          description: The identity provider was deleted.
 
 components:
   securitySchemes:
@@ -1287,6 +1302,20 @@ components:
                   So a mapping of `{ "sub.$": "$.sub" }` with identity provider claims of `{ "sub": "user-123" }`
                   will result in `{ "sub": "user-123" }` as the input claims into any token provider.
                 additionalProperties: true
+    DeleteIdentityProvider:
+      description: Identity provider to delete
+      content:
+        "application/json":
+          schema:
+            type: object
+            description: Identity provider to delete
+            properties:
+              aud:
+                type: string
+                description: Audience for the identity provider (at least one of aud or iss must be provided).
+              iss:
+                type: string
+                description: Issuer for the identity provider (at least one of aud or iss must be provided).
 
   responses:
     BadRequest:
