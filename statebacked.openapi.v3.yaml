@@ -1650,6 +1650,8 @@ components:
               - some-tag
       required:
         - state
+        - tags
+        - done
       properties:
         state:
           $ref: "#/components/schemas/StateValue"
@@ -1710,6 +1712,8 @@ components:
         - machineInstanceName
         - publicContext
         - state
+        - tags
+        - done
       properties:
         type:
           type: string
