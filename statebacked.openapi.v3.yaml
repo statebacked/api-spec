@@ -1622,17 +1622,11 @@ components:
         Simple state without public context:
           value:
             state: "idle"
-            states:
-              - idle
         Hierarchical state with public context:
           value:
             state:
               parent:
                 nested1: "idle"
-            states:
-              - parent
-              - nested1
-              - idle
             publicContext:
               user: "u_1234"
         Parallel state with public context:
@@ -1641,28 +1635,15 @@ components:
               parent:
                 nested1: "idle"
                 nested2: "idle"
-            states:
-              - parent
-              - nested1
-              - nested2
-              - idle
             publicContext:
               connectedDocuments:
                 - doc_1234
                 - doc_5678
       required:
         - state
-        - states
       properties:
         state:
           $ref: "#/components/schemas/StateValue"
-        states:
-          description: |
-            A flattened array of the states that the machine instance is in.
-            This may be easier to work with than the `state` property.
-          type: array
-          items:
-            type: string
         publicContext:
           description: |
             The public context of the machine instance.
