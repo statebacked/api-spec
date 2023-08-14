@@ -1622,6 +1622,9 @@ components:
         Simple state without public context:
           value:
             state: "idle"
+            done: false
+            tags:
+              - some-tag
         Hierarchical state with public context:
           value:
             state:
@@ -1629,6 +1632,9 @@ components:
                 nested1: "idle"
             publicContext:
               user: "u_1234"
+            done: false
+            tags:
+              - some-tag
         Parallel state with public context:
           values:
             state:
@@ -1639,6 +1645,9 @@ components:
               connectedDocuments:
                 - doc_1234
                 - doc_5678
+            done: false
+            tags:
+              - some-tag
       required:
         - state
       properties:
@@ -1651,6 +1660,14 @@ components:
             This includes all context under the `public` key.
           type: object
           additionalProperties: true
+        tags:
+          type: array
+          description: Array of tags for the current states
+          items:
+            type: string
+        done:
+          type: boolean
+          description: Is the state machine complete
     Event:
       description: |
         An event to send to a machine instance.
@@ -1706,6 +1723,14 @@ components:
           additionalProperties: true
         state:
           $ref: "#/components/schemas/StateValue"
+        tags:
+          type: array
+          description: Array of tags for the current states
+          items:
+            type: string
+        done:
+          type: boolean
+          description: Is the state machine complete
     WSToClientErrorMsg:
       type: object
       description: |
