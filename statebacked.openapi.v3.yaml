@@ -281,6 +281,8 @@ tags:
         }
       }
       ```
+  - name: Orgs
+    description: Manage organizations
   - name: Billing
     description: Manage billing
 
@@ -1199,6 +1201,55 @@ paths:
                   token_type:
                     type: string
                     const: "Bearer"
+  /orgs:
+    get:
+      tags:
+        - Orgs 
+      summary: List your organizations
+      parameters:
+        - name: cursor
+          in: query
+          description: A cursor returned from a previous call to /orgs
+          required: false
+          schema:
+            type: string
+      security:
+        - BearerAuth:
+          - "org.read"
+      responses:
+        "200":
+          description: Your organizations
+          content:
+            "application/json":
+              schema:
+                type: object
+                required:
+                  - orgs
+                properties:
+                  orgs:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - name
+                        - role
+                        - createdAt
+                      properties:
+                        id:
+                          $ref: "#/components/schemas/OrgId"
+                        name:
+                          type: string
+                        role:
+                          $ref: "#/components/schemas/OrgMemberRole"
+                        createdAt:
+                          type: string
+                          format: date-time
+                  cursor:
+                    type: string
+                    description: |
+                      The cursor to use on the next call to retrieve the next page of organizations.
+                      If no cursor is returned, there are no more pages to retrieve.
   /billing:
     get:
       tags:
@@ -1843,4 +1894,15 @@ components:
         - $ref: "#/components/schemas/WSToServerSubscribeToInstanceMsg"
         - $ref: "#/components/schemas/WSToServerUnsubscribeFromInstanceMsg"
         - $ref: "#/components/schemas/WSToServerPingMsg"
+    OrgId:
+      type: string
+      description: An identifier for an organization
+      example: "org_uHvZHpF4STWvMg8BKVCUTg"
+    OrgMemberRole:
+      type: string
+      description: The role that a member has in an organization
+      enum:
+        - admin
+        - read
+        - write
 
