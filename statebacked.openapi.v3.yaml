@@ -281,6 +281,8 @@ tags:
         }
       }
       ```
+  - name: Billing
+    description: Manage billing
 
 paths:
   /machines:
@@ -1197,6 +1199,27 @@ paths:
                   token_type:
                     type: string
                     const: "Bearer"
+  /billing:
+    get:
+      tags:
+        - Billing
+      summary: Retrieve the link to your organization's billing portal
+      security:
+        - BearerAuth:
+          - "org.write"
+      responses:
+        "200":
+          description: The link to your billing portal
+          content:
+            "application/json":
+              schema:
+                type: object
+                required:
+                  - url
+                properties:
+                  url:
+                    type: string
+                    description: The link to your billing portal
 
 components:
   securitySchemes:
