@@ -285,6 +285,8 @@ tags:
     description: Manage organizations
   - name: Billing
     description: Manage billing
+  - name: Keys
+    description: Manage signing keys
 
 paths:
   /machines:
@@ -1250,6 +1252,57 @@ paths:
                     description: |
                       The cursor to use on the next call to retrieve the next page of organizations.
                       If no cursor is returned, there are no more pages to retrieve.
+  /keys:
+    get:
+      tags:
+        - Keys
+      summary: List your keys
+      parameters:
+        - name: cursor
+          in: query
+          description: A cursor returned from a previous call to /keys
+          required: false
+          schema:
+            type: string
+      security:
+        - BearerAuth:
+          - "org.read"
+      responses:
+        "200":
+          description: Your keys
+          content:
+            "application/json":
+              schema:
+                type: object
+                required:
+                  - orgs
+                properties:
+                  orgs:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - name
+                        - scopes
+                        - createdAt
+                      properties:
+                        id:
+                          $ref: "#/components/schemas/KeyId"
+                        name:
+                          type: string
+                        scopes:
+                          type: array
+                          item:
+                            $ref: "#/components/schemas/KeyScope"
+                        createdAt:
+                          type: string
+                          format: date-time
+                  cursor:
+                    type: string
+                    description: |
+                      The cursor to use on the next call to retrieve the next page of keys.
+                      If no cursor is returned, there are no more pages to retrieve.
   /billing:
     get:
       tags:
@@ -1905,4 +1958,32 @@ components:
         - admin
         - read
         - write
+    KeyId:
+      type: string
+      description: An identifier for a key
+      example: "sbk_nXzdtCxESemgtxS5JX-LrA"
+    KeyScope:
+      type: string
+      description: |
+        An authorization scope associated with a key.
+        Any request that is signed by a JWT with this key will have access to the scopes associated with that key.
+      enum:
+        - "events.write"
+        - "events.read"
+        - "state.read"
+        - "instances.read"
+        - "instances.write"
+        - "instances.admin"
+        - "machines.read"
+        - "machines.write"
+        - "machines.admin"
+        - "machine-versions.read"
+        - "machine-versions.write"
+        - "analytics.read"
+        - "org.read"
+        - "org.write"
+        - "org.keys.write"
+        - "org-members.write"
+        - "logs.read"
+        - "tokens.admin"
 
