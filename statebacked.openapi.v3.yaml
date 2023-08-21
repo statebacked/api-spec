@@ -1217,6 +1217,56 @@ paths:
           schema:
             type: string
   /idps:
+    get:
+      tags:
+        - Tokens
+      summary: List the identity providers you've trusted
+      parameters:
+        - name: cursor
+          in: query
+          description: A cursor returned from a previous call to /idps
+          required: false
+          schema:
+            type: string
+      security:
+        - BearerAuth:
+          - "tokens.admin"
+      responses:
+        "200":
+          description: The trusted identity providers for your organization
+          content:
+            "application/json":
+              schema:
+                type: object
+                required:
+                  - idps
+                properties:
+                  idps:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - algs
+                        - mapping
+                      properties:
+                        iss:
+                          type: string
+                        aud:
+                          type: string
+                        algs:
+                          type: array
+                          items:
+                            $ref: "#/components/scheams/SigningAlgorithm"
+                        jwksUrl:
+                          type: string
+                        mapping:
+                          type: object
+                          additionalProperties: true
+                  cursor:
+                    type: string
+                    description: |
+                      The cursor to use on the next call to retrieve the next page of identity providers.
+                      If no cursor is returned, there are no more pages to retrieve.
     post:
       tags:
         - Tokens
@@ -1721,21 +1771,7 @@ components:
                 type: array
                 description: Allowed signing algorithms
                 items:
-                  type: string
-                  enum:
-                    - HS256
-                    - HS384
-                    - HS512
-                    - PS256
-                    - PS384
-                    - PS512
-                    - RS256
-                    - RS384
-                    - RS512
-                    - ES256
-                    - ES384
-                    - ES512
-                    - EdDSA 
+                  $ref: "#/components/schemas/SigningAlgorithm"
               mapping:
                 type: object
                 description: |
@@ -2184,4 +2220,19 @@ components:
         - "org-members.write"
         - "logs.read"
         - "tokens.admin"
-
+    SigningAlgorithm:
+      type: string
+      enum:
+        - HS256
+        - HS384
+        - HS512
+        - PS256
+        - PS384
+        - PS512
+        - RS256
+        - RS384
+        - RS512
+        - ES256
+        - ES384
+        - ES512
+        - EdDSA 
