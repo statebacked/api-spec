@@ -88,6 +88,11 @@ tags:
       default exports an [XState](https://xstate.js.org/docs/) state
       machine as well as an `allowRead` and `allowWrite` function.
 
+      They are immutable and identified by an ID.
+      The `clientInfo` field is informational only and intended to be used to
+      identify the source of the machine version (e.g. git commit sha,
+      semantic version number, timestamp, etc).
+
       The `allowRead` and `allowWrite` functions are called to authorize
       read and write operations on machine instances, respectively.
       Write authorization implies the authority to read the result of
@@ -696,13 +701,51 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
   /machines/{machineSlug}/v:
-    summary: Machine definition version operations.
-    description: |
-      Machine definition versions are comprised of an XState machine,
-      an `allowRead` function, and an `allowWrite` function.
-
-      They are immutable and identified by an ID.
-      The `clientInfo` field is informational only.
+    get:
+      tags:
+        - Machine versions
+      summary: List the machine versions for this machine
+      parameters:
+        - name: cursor
+          in: query
+          description: A cursor returned from a previous call to /machines/{machineSlug}/v
+          required: false
+          schema:
+            type: string
+      security:
+        - BearerAuth:
+          - "machine-versions.read"
+      responses:
+        "200":
+          description: The machine versions for this machine
+          content:
+            "application/json":
+              schema:
+                type: object
+                required:
+                  - versions
+                properties:
+                  versions:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - createdAt
+                        - clientInfo
+                      properties:
+                        id:
+                          $ref: "#/components/schemas/MachineVersionId"
+                        createdAt:
+                          type: string
+                          format: date-time
+                        clientInfo:
+                          type: string
+                  cursor:
+                    type: string
+                    description: |
+                      The cursor to use on the next call to retrieve the next page of machine versions.
+                      If no cursor is returned, there are no more pages to retrieve.
     post:
       tags:
         - Machine versions
