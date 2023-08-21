@@ -290,13 +290,62 @@ tags:
 
 paths:
   /machines:
-    summary: Machine definition operations.
-    description: |
-      Machine definitions name a logical machine from which you can create
-      multiple *machine instances*.
-
-      Machine definitions have multiple *machine definition versions*, one
-      of which is named as the current version.
+    get:
+      tags:
+        - Machines
+      summary: List your machines
+      parameters:
+        - name: cursor
+          in: query
+          description: A cursor returned from a previous call to /machines
+          required: false
+          schema:
+            type: string
+      security:
+        - BearerAuth:
+          - "machines.read"
+      responses:
+        "200":
+          description: Your machines
+          content:
+            "application/json":
+              schema:
+                type: object
+                required:
+                  - machines
+                properties:
+                  machines:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - slug
+                        - createdAt
+                      properties:
+                        slug:
+                          $ref: "#/components/schemas/MachineSlug"
+                        createdAt:
+                          type: string
+                          format: date-time
+                        currentVersion:
+                          type: object
+                          required:
+                            - id
+                            - createdAt
+                            - clientInfo
+                          properties:
+                            id:
+                              $ref: "#/components/schemas/MachineVersionId"
+                            createdAt:
+                              type: string
+                              format: date-time
+                            clientInfo:
+                              type: string
+                  cursor:
+                    type: string
+                    description: |
+                      The cursor to use on the next call to retrieve the next page of machines.
+                      If no cursor is returned, there are no more pages to retrieve.
     post:
       summary: Create a new machine definition.
       tags:
@@ -1266,7 +1315,7 @@ paths:
             type: string
       security:
         - BearerAuth:
-          - "org.read"
+          - "tokens.admin"
       responses:
         "200":
           description: Your keys
@@ -1275,9 +1324,9 @@ paths:
               schema:
                 type: object
                 required:
-                  - orgs
+                  - keys
                 properties:
-                  orgs:
+                  keys:
                     type: array
                     items:
                       type: object
