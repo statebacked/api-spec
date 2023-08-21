@@ -1220,7 +1220,7 @@ paths:
     get:
       tags:
         - Tokens
-      summary: List the identity providers you've trusted
+      summary: List the identity providers configured for your org
       parameters:
         - name: cursor
           in: query
@@ -1331,6 +1331,51 @@ paths:
         "204":
           description: The identity provider was deleted.
   /token-providers:
+    get:
+      tags:
+        - Tokens
+      summary: List the token providers configured for your org
+      parameters:
+        - name: cursor
+          in: query
+          description: A cursor returned from a previous call to /token-providers
+          required: false
+          schema:
+            type: string
+      security:
+        - BearerAuth:
+          - "tokens.admin"
+      responses:
+        "200":
+          description: The token providers for your organization
+          content:
+            "application/json":
+              schema:
+                type: object
+                required:
+                  - tokenProviders
+                properties:
+                  tokenProviders:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - service
+                        - keyId
+                        - mapping
+                      properties:
+                        service:
+                          type: string
+                        keyId:
+                          $ref: "#/components/schemas/KeyId"
+                        mapping:
+                          type: object
+                          additionalProperties: true
+                  cursor:
+                    type: string
+                    description: |
+                      The cursor to use on the next call to retrieve the next page of token providers.
+                      If no cursor is returned, there are no more pages to retrieve.
     post:
       tags:
         - Tokens
