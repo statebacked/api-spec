@@ -618,6 +618,51 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
   /machines/{machineSlug}/i/{instanceSlug}/events:
+    get:
+      tags:
+        - Machine instances
+      summary: List the transitions for this machine instance
+      parameters:
+        - name: cursor
+          in: query
+          description: A cursor returned from a previous call to /machines/{machineSlug}/i/{instanceSlug}/events
+          required: false
+          schema:
+            type: string
+      security:
+        - BearerAuth:
+          - "instances.admin"
+      responses:
+        "200":
+          description: The transitions for this machine instance
+          content:
+            "application/json":
+              schema:
+                type: object
+                required:
+                  - transitions
+                properties:
+                  transitions:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - createdAt
+                        - state
+                        - event
+                      properties:
+                        createdAt:
+                          type: string
+                          format: date-time
+                        state:
+                          $ref: "#/components/schemas/StateValue"
+                        event:
+                          $ref: "#/components/schemas/Event"
+                  cursor:
+                    type: string
+                    description: |
+                      The cursor to use on the next call to retrieve the next page of transitions.
+                      If no cursor is returned, there are no more pages to retrieve.
     post:
       tags:
         - Machine instances
