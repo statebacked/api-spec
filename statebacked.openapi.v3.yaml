@@ -1256,7 +1256,7 @@ paths:
                         algs:
                           type: array
                           items:
-                            $ref: "#/components/scheams/SigningAlgorithm"
+                            $ref: "#/components/schemas/SigningAlgorithm"
                         jwksUrl:
                           type: string
                         mapping:
