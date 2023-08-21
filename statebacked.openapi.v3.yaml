@@ -465,6 +465,67 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "409":
           $ref: "#/components/responses/Conflict"
+  /machines/{machineSlug}/i:
+    get:
+      tags:
+        - Machine instances
+      summary: List the instances of this machine
+      parameters:
+        - name: cursor
+          in: query
+          description: A cursor returned from a previous call to /machines/{machineSlug}/i
+          required: false
+          schema:
+            type: string
+      security:
+        - BearerAuth:
+          - "instances.read"
+      responses:
+        "200":
+          description: The instances of this machine
+          content:
+            "application/json":
+              schema:
+                type: object
+                required:
+                  - instances
+                properties:
+                  instances:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - slug
+                        - createdAt
+                        - status
+                        - machineVersion
+                      properties:
+                        slug:
+                          $ref: "#/components/schemas/MachineInstanceSlug"
+                        createdAt:
+                          type: string
+                          format: date-time
+                        status:
+                          $ref: "#/components/schemas/MachineInstanceStatus"
+                        machineVersion:
+                          type: object
+                          required:
+                            - id
+                            - createdAt
+                            - clientInfo
+                          properties:
+                            id:
+                              $ref: "#/components/schemas/MachineVersionId"
+                            createdAt:
+                              type: string
+                              format: date-time
+                            clientInfo:
+                              type: string
+                  cursor:
+                    type: string
+                    description: |
+                      The cursor to use on the next call to retrieve the next page of instances.
+                      If no cursor is returned, there are no more pages to retrieve.
   /machines/{machineSlug}/i/{instanceSlug}:
     get:
       tags:
