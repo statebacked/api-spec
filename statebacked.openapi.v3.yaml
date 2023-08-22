@@ -1632,6 +1632,28 @@ paths:
                     description: |
                       The cursor to use on the next call to retrieve the next page of keys.
                       If no cursor is returned, there are no more pages to retrieve.
+    post:
+      tags:
+        - Keys
+      description: |
+        Create a key
+      requestBody:
+        $ref: "#/components/requestBodies/CreateKey"
+      responses:
+        "200":
+          description: New key
+          content:
+            "application/json":
+              schema:
+                type: object
+                required:
+                  - id
+                  - key
+                properties:
+                  id:
+                    $ref: "#/components/schemas/KeyId"
+                  key:
+                    type: string
   /billing:
     get:
       tags:
@@ -1946,6 +1968,33 @@ components:
               subject_token:
                 type: string
                 description: A JWT signed by one of your configured identity providers (based on configurations posted to /idps)
+    CreateKey:
+      description: Create a key
+      content:
+        "application/json":
+          schema:
+            type: object
+            description: Key creation request
+            required:
+              - name
+            properties:
+              name:
+                type: string
+              scopes:
+                type: array
+                description: |
+                  The scopes that any request with a token signed by this key will have access to.
+                  You must either pass `scopes` or `use`.
+                items:
+                  $ref: "#/components/schemas/KeyScope"
+              use:
+                type: string
+                description: |
+                  The intended use for this key. This is a shorthand way to set a reasonable set of scopes.
+                  You must either pass `scopes` or `use`.
+                enum:
+                  - production
+                  - ci
 
   responses:
     BadRequest:
