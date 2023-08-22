@@ -1581,6 +1581,25 @@ paths:
                     description: |
                       The cursor to use on the next call to retrieve the next page of organizations.
                       If no cursor is returned, there are no more pages to retrieve.
+    post:
+      tags:
+        - Orgs
+      description: |
+        Create an org
+      requestBody:
+        $ref: "#/components/requestBodies/CreateOrg"
+      responses:
+        "200":
+          description: New org
+          content:
+            "application/json":
+              schema:
+                type: object
+                required:
+                  - id
+                properties:
+                  id:
+                    $ref: "#/components/schemas/OrgId"
   /keys:
     get:
       tags:
@@ -1995,6 +2014,18 @@ components:
                 enum:
                   - production
                   - ci
+    CreateOrg:
+      description: Create an org
+      content:
+        "application/json":
+          schema:
+            type: object
+            description: Org creation request
+            required:
+              - name
+            properties:
+              name:
+                type: string
 
   responses:
     BadRequest:
