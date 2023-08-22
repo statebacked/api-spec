@@ -333,19 +333,7 @@ paths:
                           type: string
                           format: date-time
                         currentVersion:
-                          type: object
-                          required:
-                            - id
-                            - createdAt
-                            - clientInfo
-                          properties:
-                            id:
-                              $ref: "#/components/schemas/MachineVersionId"
-                            createdAt:
-                              type: string
-                              format: date-time
-                            clientInfo:
-                              type: string
+                          $ref: "#/components/schemas/MachineVersionInfo"
                   cursor:
                     type: string
                     description: |
@@ -508,19 +496,7 @@ paths:
                         status:
                           $ref: "#/components/schemas/MachineInstanceStatus"
                         machineVersion:
-                          type: object
-                          required:
-                            - id
-                            - createdAt
-                            - clientInfo
-                          properties:
-                            id:
-                              $ref: "#/components/schemas/MachineVersionId"
-                            createdAt:
-                              type: string
-                              format: date-time
-                            clientInfo:
-                              type: string
+                          $ref: "#/components/schemas/MachineVersionInfo"
                   cursor:
                     type: string
                     description: |
@@ -560,7 +536,7 @@ paths:
             $ref: "#/components/schemas/MachineInstanceSlug"
       security:
         - BearerAuth:
-          - "instances.read"
+          - "state.read"
       responses:
         "200":
           description: The state was retrieved successfully.
@@ -615,6 +591,45 @@ paths:
           description: The machine instance was deleted successfully.
         "400":
           $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /machines/{machineSlug}/i/{instanceSlug}/admin:
+    get:
+      tags:
+        - Machine instances
+      summary: Get the administrative state of an instance
+      description: |
+        Retrieve the state of the machine instance that was previously created by
+        calling `POST /machines/{machineSlug}` and may have had events sent to it
+        by calling `POST /machines/{machineSlug}/i/{instanceSlug}/events`.
+
+        No machine authorizers will be called to authorize this read so this requires
+        instances.read scope.
+
+        The full context for the instance (instead of only public context) will be returned.
+      parameters:
+        - name: machineSlug
+          in: path
+          description: The slug/name for the machine definition.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineSlug"
+        - name: instanceSlug
+          in: path
+          description: The slug/name for the machine instance.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineInstanceSlug"
+      security:
+        - BearerAuth:
+          - "instances.read"
+      responses:
+        "200":
+          description: The instance was retrieved successfully.
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/AdministrativeInstanceState"
         "403":
           $ref: "#/components/responses/Forbidden"
   /machines/{machineSlug}/i/{instanceSlug}/events:
@@ -834,19 +849,7 @@ paths:
                   versions:
                     type: array
                     items:
-                      type: object
-                      required:
-                        - id
-                        - createdAt
-                        - clientInfo
-                      properties:
-                        id:
-                          $ref: "#/components/schemas/MachineVersionId"
-                        createdAt:
-                          type: string
-                          format: date-time
-                        clientInfo:
-                          type: string
+                      $ref: "#/components/schemas/MachineVersionInfo"
                   cursor:
                     type: string
                     description: |
@@ -2020,6 +2023,39 @@ components:
       description: A compound state
       additionalProperties:
         $ref: "#/components/schemas/StateValue"
+    AdministrativeInstanceState:
+      type: object
+      description: |
+        The full state of a machine instance.
+      required:
+        - state
+        - context
+        - tags
+        - done
+        - status
+        - machineVersion
+      properties:
+        state:
+          $ref: "#/components/schemas/StateValue"
+        context:
+          description: |
+            The full context of the machine instance.
+          type: object
+          additionalProperties: true
+        status:
+          $ref: "#/components/schemas/MachineInstanceStatus"
+        tags:
+          type: array
+          description: Array of tags for the current states
+          items:
+            type: string
+        done:
+          type: boolean
+          description: Is the state machine complete
+        machineVersion:
+          $ref: "#/components/schemas/MachineVersionInfo"
+        desiredMachineVersion:
+          $ref: "#/components/schemas/MachineVersionInfo"
     State:
       type: object
       description: |
@@ -2281,3 +2317,17 @@ components:
         - ES384
         - ES512
         - EdDSA 
+    MachineVersionInfo:
+      type: object
+      required:
+        - id
+        - createdAt
+        - clientInfo
+      properties:
+        id:
+          $ref: "#/components/schemas/MachineVersionId"
+        createdAt:
+          type: string
+          format: date-time
+        clientInfo:
+          type: string
