@@ -359,6 +359,39 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
   /machines/{machineSlug}:
+    get:
+      tags:
+        - Machines
+      summary: Get a machine definition.
+      description: |
+        Retrieve the machine definition
+      parameters:
+        - name: machineSlug
+          in: path
+          description: The slug/name for the machine definition.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineSlug"
+      security:
+        - BearerAuth:
+          - "machines.read"
+      responses:
+        "200":
+          description: The machine was retrieved successfully.
+          content:
+            "application/json":
+              schema:
+                type: object
+                required:
+                  - createdAt
+                properties:
+                  createdAt:
+                    type: string
+                    format: date-time
+                  currentVersion:
+                    $ref: "#/components/schemas/MachineVersionInfo"
+        "403":
+          $ref: "#/components/responses/Forbidden"
     post:
       tags:
         - Machine instances
