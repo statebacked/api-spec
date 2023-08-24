@@ -2174,6 +2174,7 @@ components:
         - done
         - status
         - machineVersion
+        - createdAt
       properties:
         state:
           $ref: "#/components/schemas/StateValue"
@@ -2196,6 +2197,9 @@ components:
           $ref: "#/components/schemas/MachineVersionInfo"
         desiredMachineVersion:
           $ref: "#/components/schemas/MachineVersionInfo"
+        createdAt:
+          type: string
+          format: date-time
     State:
       type: object
       description: |
