@@ -383,13 +383,18 @@ paths:
               schema:
                 type: object
                 required:
-                  - createdAt
+                  - machine
                 properties:
-                  createdAt:
-                    type: string
-                    format: date-time
-                  currentVersion:
-                    $ref: "#/components/schemas/MachineVersionInfo"
+                  machine:
+                    type: object
+                    required:
+                      - createdAt
+                    properties:
+                      createdAt:
+                        type: string
+                        format: date-time
+                      currentVersion:
+                        $ref: "#/components/schemas/MachineVersionInfo"
         "403":
           $ref: "#/components/responses/Forbidden"
     post:
