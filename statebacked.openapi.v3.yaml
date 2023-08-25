@@ -1571,6 +1571,7 @@ paths:
                         - name
                         - role
                         - createdAt
+                        - limits
                       properties:
                         id:
                           $ref: "#/components/schemas/OrgId"
@@ -1581,6 +1582,16 @@ paths:
                         createdAt:
                           type: string
                           format: date-time
+                        limits:
+                          type: object
+                          required:
+                            - monthlyEventsLimit
+                            - monthlyReadsLimit
+                          properties:
+                            monthlyEventsLimit:
+                              type: number
+                            monthlyReadsLimit:
+                              type: number
                   cursor:
                     type: string
                     description: |
