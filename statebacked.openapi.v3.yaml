@@ -2257,10 +2257,14 @@ components:
             tags:
               - some-tag
       required:
+        - ts
         - state
         - tags
         - done
       properties:
+        ts:
+          type: number
+          description: Timestamp for when the state was created
         state:
           $ref: "#/components/schemas/StateValue"
         publicContext:
@@ -2316,6 +2320,7 @@ components:
         Clients will receive instance update messages after subscribing to an instance.
       required:
         - type
+        - ts
         - machineName
         - machineInstanceName
         - publicContext
@@ -2333,6 +2338,9 @@ components:
         publicContext:
           type: object
           additionalProperties: true
+        ts:
+          type: number
+          description: Timestamp for when the state was created
         state:
           $ref: "#/components/schemas/StateValue"
         tags:
