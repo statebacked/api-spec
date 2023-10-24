@@ -398,7 +398,7 @@ paths:
                         $ref: "#/components/schemas/MachineVersionInfo"
                       indexes:
                         type: array
-                        item:
+                        items:
                           $ref: "#/components/schemas/IndexName"
         "403":
           $ref: "#/components/responses/Forbidden"
@@ -705,7 +705,7 @@ paths:
                 properties:
                   machineInstances:
                     type: array
-                    item:
+                    items:
                       type: object
                       required:
                         - indexValue
@@ -1746,7 +1746,7 @@ paths:
                           type: string
                         scopes:
                           type: array
-                          item:
+                          items:
                             $ref: "#/components/schemas/KeyScope"
                         createdAt:
                           type: string
@@ -1843,7 +1843,7 @@ components:
                 $ref: "#/components/schemas/MachineSlug"
               indexes:
                 type: array
-                item:
+                items:
                   $ref: "#/components/schemas/IndexName"
     ProvisionallyCreateMachineDefinitionVersion:
       description: Request to provisionally create a machine definition version.
