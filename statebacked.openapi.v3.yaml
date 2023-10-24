@@ -636,6 +636,90 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /machines/{machineSlug}/indexes/{index}/query:
+    get:
+      tags:
+        - Machine instances
+      summary: Query for machine instances using the indicated index.
+      description: |
+        Using an index specified during machine creation and defined during machine version creation,
+        query for instances of the provided machine that have an indexed value that matches the
+        provided filters.
+      parameters:
+        - name: machineSlug
+          in: path
+          description: The slug/name for the machine definition.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineSlug"
+        - name: index
+          in: path
+          description: The name for the machine index.
+          required: true
+          schema:
+            $ref: "#/components/schemas/IndexName"
+        - name: op
+          in: query
+          description: The operation for the filter.
+          required: false
+          schema:
+            type: string
+            enum: ["eq", "ne", "gt", "gte", "lt", "lte"]
+        - name: value
+          in: query
+          description: The value for the filter.
+          required: false
+          schema:
+            type: string
+        - name: dir
+          in: query
+          description: The sort direction for the index.
+          required: false
+          schema:
+            type: string
+            enum: ["asc", "desc"]
+        - name: limit
+          in: query
+          description: The maximum number of items to return.
+          required: false
+          schema:
+            type: number
+        - name: cursor
+          in: query
+          description: The cursor returned from a previous call to query.
+          required: false
+          schema:
+            type: string
+      security:
+        - BearerAuth:
+          - "instances.read"
+      responses:
+        "200":
+          description: The query was executed successfully.
+          content:
+            "application/json":
+              schema:
+                type: object
+                required:
+                  - machineInstances
+                properties:
+                  machineInstances:
+                    type: array
+                    item:
+                      type: object
+                      required:
+                        - indexValue
+                        - instanceName
+                      properties:
+                        indexValue:
+                          type: string
+                          description: The value of the index property for this instance.
+                        instanceName:
+                          $ref: "#/components/schemas/MachineInstanceSlug"
+                  cursor:
+                    type: string
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /machines/{machineSlug}/i/{instanceSlug}/admin:
     get:
       tags:
@@ -646,8 +730,8 @@ paths:
         calling `POST /machines/{machineSlug}` and may have had events sent to it
         by calling `POST /machines/{machineSlug}/i/{instanceSlug}/events`.
 
-        No machine authorizers will be called to authorize this read so this requires
-        instances.read scope.
+        No machine authorizers will be called to authorize this read and it returns
+        private context data so this requires instances.admin scope.
 
         The full context for the instance (instead of only public context) will be returned.
       parameters:
@@ -665,7 +749,7 @@ paths:
             $ref: "#/components/schemas/MachineInstanceSlug"
       security:
         - BearerAuth:
-          - "instances.read"
+          - "instances.admin"
       responses:
         "200":
           description: The instance was retrieved successfully.
