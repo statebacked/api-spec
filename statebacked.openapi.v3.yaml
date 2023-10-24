@@ -701,20 +701,20 @@ paths:
               schema:
                 type: object
                 required:
-                  - machineInstances
+                  - instances
                 properties:
-                  machineInstances:
+                  instances:
                     type: array
                     items:
                       type: object
                       required:
                         - indexValue
-                        - instanceName
+                        - slug
                       properties:
                         indexValue:
                           type: string
                           description: The value of the index property for this instance.
-                        instanceName:
+                        slug:
                           $ref: "#/components/schemas/MachineInstanceSlug"
                   cursor:
                     type: string
