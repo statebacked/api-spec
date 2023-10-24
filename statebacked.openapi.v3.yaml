@@ -389,12 +389,17 @@ paths:
                     type: object
                     required:
                       - createdAt
+                      - indexes
                     properties:
                       createdAt:
                         type: string
                         format: date-time
                       currentVersion:
                         $ref: "#/components/schemas/MachineVersionInfo"
+                      indexes:
+                        type: array
+                        item:
+                          $ref: "#/components/schemas/IndexName"
         "403":
           $ref: "#/components/responses/Forbidden"
     post:
@@ -1752,6 +1757,10 @@ components:
             properties:
               slug:
                 $ref: "#/components/schemas/MachineSlug"
+              indexes:
+                type: array
+                item:
+                  $ref: "#/components/schemas/IndexName"
     ProvisionallyCreateMachineDefinitionVersion:
       description: Request to provisionally create a machine definition version.
       content:
@@ -2505,3 +2514,7 @@ components:
           format: date-time
         clientInfo:
           type: string
+    IndexName:
+      type: string
+      description: Name of an index on machines
+      pattern: "^[a-zA-Z0-9_-]{1,128}$"
