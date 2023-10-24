@@ -1785,6 +1785,15 @@ components:
                   Whether to make this version the current version for the machine definition.
                   If `true`, the current version will be set to this version.
                   If `false`, the current version will not be changed.
+              indexSelectors:
+                type: object
+                description: |
+                  Mapping from index names (must match index names from the corresponding machine)
+                  to JSON path selectors into machine context.
+                  On every state update, the pointed-to value in machine context will be extracted
+                  and used to index the machine.
+                additionalProperties:
+                  type: string
     ProvisionallyCreateMachineVersionMigration:
       description: Request to provisionally create a machine version migration.
       content:
