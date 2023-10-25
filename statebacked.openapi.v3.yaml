@@ -692,7 +692,7 @@ paths:
             type: string
       security:
         - BearerAuth:
-          - "instances.read"
+          - "indexes.read"
       responses:
         "200":
           description: The query was executed successfully.
