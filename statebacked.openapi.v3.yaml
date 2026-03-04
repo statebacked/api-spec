@@ -502,6 +502,12 @@ paths:
         - Machine instances
       summary: List the instances of this machine
       parameters:
+        - name: machineSlug
+          in: path
+          description: The slug/name for the machine definition.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineSlug"
         - name: cursor
           in: query
           description: A cursor returned from a previous call to /machines/{machineSlug}/i
@@ -765,6 +771,18 @@ paths:
         - Machine instances
       summary: List the transitions for this machine instance
       parameters:
+        - name: machineSlug
+          in: path
+          description: The slug/name for the machine definition.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineSlug"
+        - name: instanceSlug
+          in: path
+          description: The slug/name for the machine instance.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineInstanceSlug"
         - name: cursor
           in: query
           description: A cursor returned from a previous call to /machines/{machineSlug}/i/{instanceSlug}/events
@@ -954,6 +972,12 @@ paths:
         - Machine versions
       summary: List the machine versions for this machine
       parameters:
+        - name: machineSlug
+          in: path
+          description: The slug/name for the machine definition.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineSlug"
         - name: cursor
           in: query
           description: A cursor returned from a previous call to /machines/{machineSlug}/v
@@ -1237,7 +1261,7 @@ paths:
                 required:
                   - machineVersionMigrationId
                 properties:
-                  machineVersionId:
+                  machineVersionMigrationId:
                     $ref: "#/components/schemas/MachineVersionMigrationId"
   /http-apis/{orgId}/machines/{machineSlug}/{httpApiSlug}:
     post: &httpApiDefinition
@@ -2177,7 +2201,7 @@ components:
                   Where `your-org-id` can be found via `smply orgs list` and `token-provider-service-id`
                   is the `service` that you passed in your post to /token-providers.
                 example: "https://tokens.statebacked.dev/org_yourorg/your-service"
-              requested_token-type:
+              requested_token_type:
                 type: string
                 description: The type of token being requested
                 const: "urn:ietf:params:oauth:token-type:access_token"
@@ -2385,36 +2409,11 @@ components:
       type: object
       description: |
         The state of a machine instance.
-      examples:
-        Simple state without public context:
-          value:
-            state: "idle"
-            done: false
-            tags:
-              - some-tag
-        Hierarchical state with public context:
-          value:
-            state:
-              parent:
-                nested1: "idle"
-            publicContext:
-              user: "u_1234"
-            done: false
-            tags:
-              - some-tag
-        Parallel state with public context:
-          values:
-            state:
-              parent:
-                nested1: "idle"
-                nested2: "idle"
-            publicContext:
-              connectedDocuments:
-                - doc_1234
-                - doc_5678
-            done: false
-            tags:
-              - some-tag
+      example:
+        state: "idle"
+        done: false
+        tags:
+          - some-tag
       required:
         - ts
         - state
@@ -2633,6 +2632,7 @@ components:
         - "org.keys.write"
         - "org-members.write"
         - "logs.read"
+        - "indexes.read"
         - "tokens.admin"
     SigningAlgorithm:
       type: string
