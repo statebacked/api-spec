@@ -1239,6 +1239,63 @@ paths:
                 properties:
                   machineVersionId:
                     $ref: "#/components/schemas/MachineVersionMigrationId"
+  /http-apis/{orgId}/machines/{machineSlug}/{httpApiSlug}:
+    post: &httpApiDefinition
+      tags:
+        - Custom HTTP API
+      summary: Invoke the custom HTTP API you defined within your machine definition.
+      description: |
+        This operation sends the method, headers, and body to the httpApiMapper
+        defined in your machine definition for the provided httpApiSlug.
+
+        Your code determines whether to reject the request or to accept it and map it
+        to an event that is sent to the machine instance you specify.
+
+        The response is determined by the response mapper that you define.
+      parameters:
+        - name: orgId
+          in: path
+          description: The id for your organization.
+          required: true
+          schema:
+            $ref: "#/components/schemas/OrgId"
+        - name: machineSlug
+          in: path
+          description: The slug/name for the machine definition this version is related to.
+          required: true
+          schema:
+            $ref: "#/components/schemas/MachineSlug"
+        - name: httpApiSlug
+          in: path
+          description: |
+            The identifier for the HTTP API you want to invoke.
+            This should match an identifier you specify in your httpApiMapper map in your
+            machine definition.
+          required: true
+          schema:
+            type: string
+      security: []
+      requestBody:
+        description: The response body is determined by your httpApiMapper code.
+      responses:
+        default:
+          description: |
+            The response is fully determined by your httpApiMapper code.
+            If you do not specify a responseMapper, we return `{ ok: true }`
+            on success and `{ error: 'not found' }` or `{error: 'internal server error'}`
+            on failure.
+          content:
+            "*/*":
+              schema:
+                description: |
+                  The response is fully determined by your httpApiMapper code
+                  in your machine definition.
+    get: *httpApiDefinition
+    put: *httpApiDefinition
+    patch: *httpApiDefinition
+    delete: *httpApiDefinition
+    head: *httpApiDefinition
+    options: *httpApiDefinition
   /logs:
     get:
       tags:
