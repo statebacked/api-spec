@@ -1000,6 +1000,7 @@ function renderSchema(schema, context) {
     parts.push(renderSchemaComposition(schema, state));
     parts.push(renderArrayItems(schema, state));
     parts.push(renderObjectProperties(schema, state));
+    parts.push(renderAdditionalProperties(schema, state));
   }
 
   parts.push('</section>');
@@ -1131,6 +1132,34 @@ function renderObjectProperties(schema, state) {
   }).join("");
 
   return '<div class="schema-children"><h5>Properties</h5>' + blocks + '</div>';
+}
+
+function renderAdditionalProperties(schema, state) {
+  if (!Object.prototype.hasOwnProperty.call(schema, "additionalProperties")) {
+    return "";
+  }
+
+  const additionalProperties = schema.additionalProperties;
+
+  if (additionalProperties === false) {
+    return '<div class="schema-children"><h5>Additional Properties</h5><p class="muted">No additional properties allowed.</p></div>';
+  }
+
+  if (additionalProperties === true) {
+    return '<div class="schema-children"><h5>Additional Properties</h5><p class="muted">Any additional property value is allowed.</p></div>';
+  }
+
+  return [
+    '<div class="schema-children">',
+    '<h5>Additional Properties</h5>',
+    renderSchema(additionalProperties, {
+      id: state.id + "-additional-properties",
+      path: state.path + ".*",
+      depth: state.depth + 1,
+      name: "additionalProperties",
+    }),
+    '</div>',
+  ].join("");
 }
 
 function renderSchemaSummary(schema) {
@@ -1966,6 +1995,25 @@ function runSelfTests() {
             },
           },
         },
+        StateValue: {
+          oneOf: [
+            {
+              $ref: "#/components/schemas/SimpleStateValue",
+            },
+            {
+              $ref: "#/components/schemas/CompoundStateValue",
+            },
+          ],
+        },
+        SimpleStateValue: {
+          type: "string",
+        },
+        CompoundStateValue: {
+          type: "object",
+          additionalProperties: {
+            $ref: "#/components/schemas/StateValue",
+          },
+        },
       },
     },
   };
@@ -1993,6 +2041,11 @@ function runSelfTests() {
   );
 
   const docsData = normalizeApiDocs(localDocument);
+  assert.equal(
+    docsData.components.schemas.find((schema) => schema.name === "CompoundStateValue")
+      .shape.additionalProperties.$ref,
+    "#/components/schemas/StateValue",
+  );
   const indexHtml = renderIndexHtml(docsData);
   const appJs = renderAppJs(docsData);
   const docsJson = renderDocsDataJson(docsData);
@@ -2032,6 +2085,10 @@ function runSelfTests() {
   const renderedSchema = renderGeneratedRoute(vm, appJs, "#/schemas/Error");
   assert.match(renderedSchema, /Properties/);
   assert.match(renderedSchema, /message/);
+
+  const renderedMapSchema = renderGeneratedRoute(vm, appJs, "#/schemas/CompoundStateValue");
+  assert.match(renderedMapSchema, /Additional Properties/);
+  assert.match(renderedMapSchema, /#\/schemas\/StateValue/);
 
   const renderedNotFound = renderGeneratedRoute(vm, appJs, "#/missing");
   assert.match(renderedNotFound, /Route not found/);
