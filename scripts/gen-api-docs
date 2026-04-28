@@ -222,6 +222,10 @@ function renderStylesCss() {
   color-scheme: light dark;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.5;
+  --border-subtle: color-mix(in srgb, CanvasText 16%, transparent);
+  --border-strong: color-mix(in srgb, CanvasText 28%, transparent);
+  --text-muted: color-mix(in srgb, CanvasText 68%, transparent);
+  --surface-subtle: color-mix(in srgb, CanvasText 5%, Canvas);
 }
 
 body {
@@ -242,18 +246,20 @@ body {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  border-bottom: 1px solid color-mix(in srgb, CanvasText 16%, transparent);
+  border-bottom: 1px solid var(--border-subtle);
   padding-bottom: 1.5rem;
 }
 
 .docs-header h1,
-.docs-content h2 {
+.docs-content h2,
+.docs-content h3,
+.docs-content h4 {
   margin: 0;
 }
 
 .docs-kicker {
   margin: 0 0 0.25rem;
-  color: color-mix(in srgb, CanvasText 70%, transparent);
+  color: var(--text-muted);
   font-size: 0.875rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -296,7 +302,7 @@ body {
 .search-input {
   box-sizing: border-box;
   width: 100%;
-  border: 1px solid color-mix(in srgb, CanvasText 24%, transparent);
+  border: 1px solid var(--border-strong);
   border-radius: 0.375rem;
   background: Canvas;
   color: CanvasText;
@@ -311,6 +317,219 @@ body {
 
 .docs-content {
   min-width: 0;
+}
+
+.route-view {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.route-heading {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.route-heading h2 {
+  font-size: clamp(2rem, 3vw, 3rem);
+  line-height: 1.1;
+}
+
+.operation-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.method-badge,
+.schema-badge,
+.required-badge,
+.deprecated-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0.25rem 0.375rem;
+  text-transform: uppercase;
+}
+
+.method-badge {
+  min-width: 3.5rem;
+  justify-content: center;
+}
+
+.method-get {
+  color: #087f5b;
+}
+
+.method-post,
+.method-put,
+.method-patch {
+  color: #0b5cad;
+}
+
+.method-delete {
+  color: #c92a2a;
+}
+
+.schema-badge,
+.required-badge,
+.deprecated-badge {
+  color: var(--text-muted);
+  text-transform: none;
+}
+
+.content-section,
+.schema-block,
+.property-block,
+.response-block,
+.media-block,
+.example-block {
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.content-section {
+  display: grid;
+  gap: 1rem;
+}
+
+.content-section > header,
+.response-block > header,
+.media-block > header,
+.property-block > header,
+.schema-block > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.content-section h3,
+.response-block h4,
+.media-block h4,
+.property-block h5,
+.schema-block h4 {
+  font-size: 1rem;
+}
+
+.markdown > :first-child,
+.content-section > :first-child,
+.schema-block > :first-child {
+  margin-top: 0;
+}
+
+.markdown > :last-child,
+.content-section > :last-child,
+.schema-block > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown pre,
+.json-block {
+  overflow-x: auto;
+  border-radius: 0.375rem;
+  background: var(--surface-subtle);
+  padding: 0.875rem;
+}
+
+code,
+pre,
+.path-text {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+.path-text {
+  overflow-wrap: anywhere;
+}
+
+.docs-list,
+.operation-list,
+.schema-list,
+.metadata-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.operation-card {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.operation-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.metadata-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.metadata-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.parameter-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.parameter-table th,
+.parameter-table td {
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0.625rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.parameter-table th {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+}
+
+.schema-block,
+.property-block,
+.response-block,
+.media-block,
+.example-block {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.schema-children,
+.response-list,
+.media-list,
+.examples-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.schema-children {
+  margin-top: 0.25rem;
+}
+
+.muted,
+.empty-state {
+  color: var(--text-muted);
+}
+
+.not-found {
+  border: 1px solid var(--border-strong);
+  border-radius: 0.5rem;
+  padding: 1rem;
 }
 
 .route-placeholder[hidden] {
@@ -348,16 +567,854 @@ document.documentElement.dataset.apiTitle = apiDocsData.api.title;
 window.apiDocsData = apiDocsData;
 window.apiDocsRoutes = apiDocsRoutes;
 
-const routeStatus = document.getElementById("docs-route-status");
+const docsContent = document.getElementById("docs-content");
 
-if (routeStatus) {
-  routeStatus.textContent = [
-    apiDocsData.topics.length + " topics",
-    apiDocsData.tags.length + " tags",
-    apiDocsData.operations.length + " operations",
-    apiDocsData.components.schemas.length + " schemas",
-  ].join(" / ");
+const docsIndex = {
+  topicsBySlug: indexBy(apiDocsData.topics, "slug"),
+  tagsBySlug: indexBy(apiDocsData.tags, "slug"),
+  operationsById: indexBy(apiDocsData.operations, "id"),
+  schemasByName: indexBy(apiDocsData.components.schemas, "name"),
+  schemasBySlug: indexBy(apiDocsData.components.schemas.map(function (schema) {
+    return Object.assign({ slug: slugify(schema.name) }, schema);
+  }), "slug"),
+};
+
+function indexBy(items, key) {
+  return arrayValue(items).reduce(function (index, item) {
+    if (item && item[key]) {
+      index[String(item[key])] = item;
+    }
+
+    return index;
+  }, {});
 }
+
+function parseRoute(hash) {
+  const routeHash = hash && hash !== "#" ? hash : "#/";
+  const route = routeHash.split("?")[0].replace(/^#/, "");
+  const parts = route.split("/").filter(Boolean).map(decodeRouteSegment);
+
+  if (parts.length === 0) {
+    return { type: "overview" };
+  }
+
+  if (parts.length === 1 && ["topics", "tags", "operations", "schemas"].includes(parts[0])) {
+    return { type: parts[0] };
+  }
+
+  if (parts.length === 2 && parts[0] === "topics") {
+    return { type: "topic", key: parts[1] };
+  }
+
+  if (parts.length === 2 && parts[0] === "tags") {
+    return { type: "tag", key: parts[1] };
+  }
+
+  if (parts.length === 2 && parts[0] === "operations") {
+    return { type: "operation", key: parts[1] };
+  }
+
+  if (parts.length === 2 && parts[0] === "schemas") {
+    return { type: "schema", key: parts[1] };
+  }
+
+  return { type: "notFound", key: routeHash };
+}
+
+function dispatchView(route) {
+  if (route.type === "overview") {
+    return renderOverview();
+  }
+
+  if (route.type === "topics") {
+    return renderCollection("Topics", "Spec narrative topics", apiDocsData.topics, renderTopicLink);
+  }
+
+  if (route.type === "tags") {
+    return renderCollection("Tags", "Operation groups from the OpenAPI tags", apiDocsData.tags, renderTagLink);
+  }
+
+  if (route.type === "operations") {
+    return renderCollection("Operations", "Endpoints grouped by method and path", apiDocsData.operations, renderOperationLink);
+  }
+
+  if (route.type === "schemas") {
+    return renderCollection("Schemas", "Component schemas available from this API", apiDocsData.components.schemas, renderSchemaLink);
+  }
+
+  if (route.type === "topic") {
+    return docsIndex.topicsBySlug[route.key]
+      ? renderTopic(docsIndex.topicsBySlug[route.key])
+      : renderNotFound("Topic not found", route.key);
+  }
+
+  if (route.type === "tag") {
+    return docsIndex.tagsBySlug[route.key]
+      ? renderTag(docsIndex.tagsBySlug[route.key])
+      : renderNotFound("Tag not found", route.key);
+  }
+
+  if (route.type === "operation") {
+    return docsIndex.operationsById[route.key]
+      ? renderOperation(docsIndex.operationsById[route.key])
+      : renderNotFound("Operation not found", route.key);
+  }
+
+  if (route.type === "schema") {
+    const schema = docsIndex.schemasByName[route.key] || docsIndex.schemasBySlug[route.key];
+    return schema ? renderSchemaPage(schema) : renderNotFound("Schema not found", route.key);
+  }
+
+  return renderNotFound("Route not found", route.key || window.location.hash);
+}
+
+function renderCurrentRoute() {
+  if (!docsContent) {
+    return;
+  }
+
+  const route = parseRoute(window.location.hash);
+  docsContent.innerHTML = dispatchView(route);
+  docsContent.focus({ preventScroll: true });
+  markActiveRoute(route);
+}
+
+function markActiveRoute(route) {
+  const links = document.querySelectorAll("#docs-navigation a");
+  const routeRoot = route.type === "overview" ? "overview" : route.type.replace(/s$/, "");
+
+  links.forEach(function (link) {
+    const routeId = link.getAttribute("data-route-id");
+    const routePattern = link.getAttribute("data-route-pattern") || "";
+    const isActive =
+      routeId === routeRoot ||
+      (route.type !== "overview" && routePattern.indexOf("#/" + collectionName(route.type)) === 0);
+
+    link.toggleAttribute("aria-current", isActive);
+  });
+}
+
+function collectionName(type) {
+  if (type === "topic") {
+    return "topics";
+  }
+
+  if (type === "tag") {
+    return "tags";
+  }
+
+  if (type === "operation") {
+    return "operations";
+  }
+
+  if (type === "schema") {
+    return "schemas";
+  }
+
+  return type;
+}
+
+function renderOverview() {
+  const api = apiDocsData.api;
+  const servers = arrayValue(api.servers);
+  const primaryServer = servers[0] && servers[0].url ? servers[0].url : "";
+
+  return [
+    '<article id="route-overview" class="route-view" data-route="#/">',
+    renderRouteHeading("Static API documentation", api.title || "API Documentation", "Version " + (api.version || "unversioned")),
+    renderMarkdown(api.description),
+    '<section id="overview-metadata" class="content-section" aria-labelledby="overview-metadata-title">',
+    '<header><h3 id="overview-metadata-title">API Metadata</h3></header>',
+    '<ul class="metadata-list">',
+    metadataItem("OpenAPI", api.openapi),
+    metadataItem("Base URL", primaryServer),
+    api.externalDocs && api.externalDocs.url
+      ? '<li><strong>External docs:</strong> <a href="' + safeUrl(api.externalDocs.url) + '">' + escapeHtml(api.externalDocs.description || api.externalDocs.url) + '</a></li>'
+      : "",
+    '</ul>',
+    '</section>',
+    renderCollectionSection("Topics", apiDocsData.topics, renderTopicLink),
+    renderCollectionSection("Tag Groups", apiDocsData.tags, renderTagLink),
+    renderCollectionSection("Source Downloads", [
+      { title: "OpenAPI YAML", href: "openapi.yaml" },
+      { title: "OpenAPI JSON", href: "openapi.json" },
+      { title: "Docs data", href: "api-docs.json" },
+    ], function (item) {
+      return '<a href="' + escapeHtml(item.href) + '" download>' + escapeHtml(item.title) + '</a>';
+    }),
+    '</article>',
+  ].join("");
+}
+
+function renderTopic(topic) {
+  return [
+    '<article id="' + escapeHtml(topic.routeId) + '" class="route-view" data-route="#/topics/' + encodeRouteSegment(topic.slug) + '">',
+    renderRouteHeading("Topic", topic.title, ""),
+    renderMarkdown(topic.content),
+    '</article>',
+  ].join("");
+}
+
+function renderTag(tag) {
+  const operations = arrayValue(tag.operationIds)
+    .map(function (operationId) {
+      return docsIndex.operationsById[operationId];
+    })
+    .filter(Boolean);
+
+  return [
+    '<article id="' + escapeHtml(tag.routeId) + '" class="route-view" data-route="#/tags/' + encodeRouteSegment(tag.slug) + '">',
+    renderRouteHeading("Tag", tag.name, operations.length + " operations"),
+    renderMarkdown(tag.description),
+    renderCollectionSection("Operations", operations, renderOperationLink),
+    '</article>',
+  ].join("");
+}
+
+function renderOperation(operation) {
+  return [
+    '<article id="' + escapeHtml(operation.routeId) + '" class="route-view" data-route="#/operations/' + encodeRouteSegment(operation.id) + '">',
+    '<header class="route-heading">',
+    '<p class="docs-kicker">Operation</p>',
+    '<div class="operation-title">',
+    renderMethodBadge(operation.method),
+    '<h2>' + escapeHtml(operation.summary || operation.operationId || operation.id) + '</h2>',
+    '</div>',
+    '<p class="path-text">' + escapeHtml(operation.path) + '</p>',
+    '</header>',
+    renderMarkdown(operation.description),
+    renderOperationMetadata(operation),
+    renderParameters(operation.parameters),
+    renderRequestBody(operation.requestBody),
+    renderResponses(operation.responses),
+    renderSecurity(operation.security),
+    '</article>',
+  ].join("");
+}
+
+function renderSchemaPage(schema) {
+  return [
+    '<article id="' + escapeHtml(schema.routeId) + '" class="route-view" data-route="#/schemas/' + encodeRouteSegment(schema.name) + '">',
+    renderRouteHeading("Schema", schema.name, schema.ref),
+    renderSchema(schema.shape, { id: schema.routeId + "-shape", path: schema.name, depth: 0 }),
+    '</article>',
+  ].join("");
+}
+
+function renderNotFound(title, detail) {
+  return [
+    '<article id="route-not-found" class="route-view not-found">',
+    renderRouteHeading("Not found", title, ""),
+    '<p class="muted">' + escapeHtml(detail || "The requested documentation route does not exist.") + '</p>',
+    '<p><a href="#/">Back to overview</a></p>',
+    '</article>',
+  ].join("");
+}
+
+function renderCollection(title, subtitle, items, renderItem) {
+  return [
+    '<article class="route-view">',
+    renderRouteHeading("Documentation", title, subtitle),
+    '<ul class="docs-list">',
+    arrayValue(items).map(function (item) {
+      return '<li>' + renderItem(item) + '</li>';
+    }).join(""),
+    '</ul>',
+    '</article>',
+  ].join("");
+}
+
+function renderCollectionSection(title, items, renderItem) {
+  const id = slugify(title);
+  const renderedItems = arrayValue(items).map(function (item) {
+    return '<li>' + renderItem(item) + '</li>';
+  }).join("");
+
+  return [
+    '<section id="' + escapeHtml(id) + '" class="content-section" aria-labelledby="' + escapeHtml(id) + '-title">',
+    '<header><h3 id="' + escapeHtml(id) + '-title">' + escapeHtml(title) + '</h3></header>',
+    renderedItems ? '<ul class="docs-list">' + renderedItems + '</ul>' : '<p class="empty-state">None documented.</p>',
+    '</section>',
+  ].join("");
+}
+
+function renderRouteHeading(kicker, title, subtitle) {
+  return [
+    '<header class="route-heading">',
+    kicker ? '<p class="docs-kicker">' + escapeHtml(kicker) + '</p>' : "",
+    '<h2>' + escapeHtml(title) + '</h2>',
+    subtitle ? '<p class="muted">' + escapeHtml(subtitle) + '</p>' : "",
+    '</header>',
+  ].join("");
+}
+
+function renderOperationMetadata(operation) {
+  const tags = arrayValue(operation.tags).map(function (tagName) {
+    const tag = apiDocsData.tags.find(function (candidate) {
+      return candidate.name === tagName;
+    });
+
+    return tag ? '<a href="#/tags/' + encodeRouteSegment(tag.slug) + '">' + escapeHtml(tag.name) + '</a>' : escapeHtml(tagName);
+  }).join(", ");
+
+  return [
+    '<section id="' + escapeHtml(operation.routeId) + '-metadata" class="content-section" aria-labelledby="' + escapeHtml(operation.routeId) + '-metadata-title">',
+    '<header><h3 id="' + escapeHtml(operation.routeId) + '-metadata-title">Metadata</h3></header>',
+    '<ul class="metadata-list">',
+    metadataItem("Operation ID", operation.operationId),
+    tags ? '<li><strong>Tags:</strong> ' + tags + '</li>' : "",
+    '</ul>',
+    '</section>',
+  ].join("");
+}
+
+function renderParameters(parameters) {
+  const rows = arrayValue(parameters).map(function (parameter) {
+    return [
+      '<tr id="parameter-' + escapeHtml(slugify(parameter.in + "-" + parameter.name)) + '">',
+      '<td><code>' + escapeHtml(parameter.name) + '</code></td>',
+      '<td>' + escapeHtml(parameter.in) + '</td>',
+      '<td>' + (parameter.required ? '<span class="required-badge">required</span>' : '<span class="muted">optional</span>') + (parameter.deprecated ? ' <span class="deprecated-badge">deprecated</span>' : "") + '</td>',
+      '<td>' + renderSchemaSummary(parameter.schema) + renderMarkdown(parameter.description) + renderExamples(parameter) + '</td>',
+      '</tr>',
+    ].join("");
+  }).join("");
+
+  return [
+    '<section id="parameters" class="content-section" aria-labelledby="parameters-title">',
+    '<header><h3 id="parameters-title">Parameters</h3></header>',
+    rows
+      ? '<table class="parameter-table"><thead><tr><th>Name</th><th>In</th><th>Required</th><th>Details</th></tr></thead><tbody>' + rows + '</tbody></table>'
+      : '<p class="empty-state">No parameters documented.</p>',
+    '</section>',
+  ].join("");
+}
+
+function renderRequestBody(requestBody) {
+  if (!requestBody) {
+    return [
+      '<section id="request-body" class="content-section" aria-labelledby="request-body-title">',
+      '<header><h3 id="request-body-title">Request Body</h3></header>',
+      '<p class="empty-state">No request body documented.</p>',
+      '</section>',
+    ].join("");
+  }
+
+  return [
+    '<section id="request-body" class="content-section" aria-labelledby="request-body-title">',
+    '<header><h3 id="request-body-title">Request Body</h3>',
+    requestBody.required ? '<span class="required-badge">required</span>' : "",
+    '</header>',
+    requestBody.ref ? '<p>' + renderRefLink(requestBody.ref) + '</p>' : "",
+    renderMarkdown(requestBody.description),
+    renderMediaList(requestBody.content, "request-body"),
+    '</section>',
+  ].join("");
+}
+
+function renderResponses(responses) {
+  const responseBlocks = arrayValue(responses).map(function (response) {
+    const id = "response-" + slugify(response.status);
+
+    return [
+      '<section id="' + escapeHtml(id) + '" class="response-block" aria-labelledby="' + escapeHtml(id) + '-title">',
+      '<header><h4 id="' + escapeHtml(id) + '-title">' + escapeHtml(response.status) + '</h4>',
+      response.ref ? renderRefLink(response.ref) : "",
+      '</header>',
+      renderMarkdown(response.description),
+      renderMediaList(response.content, id),
+      '</section>',
+    ].join("");
+  }).join("");
+
+  return [
+    '<section id="responses" class="content-section" aria-labelledby="responses-title">',
+    '<header><h3 id="responses-title">Responses</h3></header>',
+    responseBlocks || '<p class="empty-state">No responses documented.</p>',
+    '</section>',
+  ].join("");
+}
+
+function renderSecurity(security) {
+  const items = arrayValue(security).map(function (requirement) {
+    if (!isPlainObject(requirement)) {
+      return "";
+    }
+
+    return Object.keys(requirement).map(function (name) {
+      const scopes = arrayValue(requirement[name]);
+      return '<li><strong>' + escapeHtml(name) + ':</strong> ' + (scopes.length ? escapeHtml(scopes.join(", ")) : '<span class="muted">no scopes listed</span>') + '</li>';
+    }).join("");
+  }).join("");
+
+  return [
+    '<section id="security" class="content-section" aria-labelledby="security-title">',
+    '<header><h3 id="security-title">Security</h3></header>',
+    items ? '<ul class="metadata-list">' + items + '</ul>' : '<p class="empty-state">No operation-specific security requirements documented.</p>',
+    '</section>',
+  ].join("");
+}
+
+function renderMediaList(content, idPrefix) {
+  const mediaBlocks = arrayValue(content).map(function (media, index) {
+    const id = idPrefix + "-media-" + slugify(media.mediaType || String(index + 1));
+
+    return [
+      '<section id="' + escapeHtml(id) + '" class="media-block" aria-labelledby="' + escapeHtml(id) + '-title">',
+      '<header><h4 id="' + escapeHtml(id) + '-title">' + escapeHtml(media.mediaType || "media") + '</h4></header>',
+      renderSchema(media.schema, { id: id + "-schema", path: id, depth: 0 }),
+      renderExamples(media),
+      '</section>',
+    ].join("");
+  }).join("");
+
+  return mediaBlocks ? '<div class="media-list">' + mediaBlocks + '</div>' : '<p class="empty-state">No media content documented.</p>';
+}
+
+function renderSchema(schema, context) {
+  if (!schema) {
+    return '<p class="empty-state">No schema documented.</p>';
+  }
+
+  if (!isPlainObject(schema)) {
+    return '<pre class="json-block"><code>' + escapeHtml(formatJson(schema)) + '</code></pre>';
+  }
+
+  const state = Object.assign({ depth: 0, path: "schema" }, context || {});
+  const id = state.id || "schema-" + slugify(state.path);
+  const parts = [
+    '<section id="' + escapeHtml(id) + '" class="schema-block">',
+    '<header>',
+    '<h4>' + escapeHtml(schemaTitle(schema, state)) + '</h4>',
+    '<span class="schema-badge">' + escapeHtml(schemaType(schema)) + '</span>',
+    '</header>',
+    schema.$ref ? '<p>' + renderRefLink(schema.$ref) + '</p>' : "",
+    renderMarkdown(schema.description),
+    renderSchemaFacts(schema),
+    renderExamples(schema),
+  ];
+
+  if (schema.circular) {
+    parts.push('<p class="muted">Circular reference omitted.</p>');
+  } else if (state.depth < 8) {
+    parts.push(renderSchemaComposition(schema, state));
+    parts.push(renderArrayItems(schema, state));
+    parts.push(renderObjectProperties(schema, state));
+  }
+
+  parts.push('</section>');
+  return parts.join("");
+}
+
+function schemaTitle(schema, state) {
+  if (state.name) {
+    return state.name;
+  }
+
+  if (schema.title) {
+    return schema.title;
+  }
+
+  const pathParts = String(state.path || "").split(".");
+  return pathParts[pathParts.length - 1] || "Schema";
+}
+
+function schemaType(schema) {
+  if (schema.type) {
+    return schema.format ? schema.type + ":" + schema.format : schema.type;
+  }
+
+  if (schema.enum) {
+    return "enum";
+  }
+
+  if (schema.oneOf) {
+    return "oneOf";
+  }
+
+  if (schema.anyOf) {
+    return "anyOf";
+  }
+
+  if (schema.allOf) {
+    return "allOf";
+  }
+
+  return "schema";
+}
+
+function renderSchemaFacts(schema) {
+  const facts = [];
+
+  if (arrayValue(schema.enum).length) {
+    facts.push('<li><strong>Enum:</strong> ' + arrayValue(schema.enum).map(function (value) {
+      return '<code>' + escapeHtml(String(value)) + '</code>';
+    }).join(", ") + '</li>');
+  }
+
+  for (const key of ["const", "default", "example", "pattern", "minimum", "maximum", "minLength", "maxLength", "minItems", "maxItems"]) {
+    if (Object.prototype.hasOwnProperty.call(schema, key)) {
+      facts.push('<li><strong>' + escapeHtml(key) + ':</strong> <code>' + escapeHtml(formatJson(schema[key])) + '</code></li>');
+    }
+  }
+
+  return facts.length ? '<ul class="metadata-list">' + facts.join("") + '</ul>' : "";
+}
+
+function renderSchemaComposition(schema, state) {
+  return ["allOf", "anyOf", "oneOf"].map(function (key) {
+    const variants = arrayValue(schema[key]);
+
+    if (!variants.length) {
+      return "";
+    }
+
+    return [
+      '<div class="schema-children">',
+      '<h5>' + escapeHtml(key) + '</h5>',
+      variants.map(function (variant, index) {
+        return renderSchema(variant, {
+          id: state.id + "-" + key + "-" + (index + 1),
+          path: state.path + "." + key + "." + (index + 1),
+          depth: state.depth + 1,
+        });
+      }).join(""),
+      '</div>',
+    ].join("");
+  }).join("");
+}
+
+function renderArrayItems(schema, state) {
+  if (!schema.items) {
+    return "";
+  }
+
+  return [
+    '<div class="schema-children">',
+    '<h5>Items</h5>',
+    renderSchema(schema.items, {
+      id: state.id + "-items",
+      path: state.path + "[]",
+      depth: state.depth + 1,
+    }),
+    '</div>',
+  ].join("");
+}
+
+function renderObjectProperties(schema, state) {
+  const properties = isPlainObject(schema.properties) ? schema.properties : {};
+  const propertyNames = Object.keys(properties);
+
+  if (!propertyNames.length) {
+    return "";
+  }
+
+  const required = new Set(arrayValue(schema.required));
+  const blocks = propertyNames.map(function (name) {
+    const property = properties[name];
+    const id = state.id + "-property-" + slugify(name);
+
+    return [
+      '<section id="' + escapeHtml(id) + '" class="property-block">',
+      '<header>',
+      '<h5><code>' + escapeHtml(name) + '</code></h5>',
+      required.has(name) ? '<span class="required-badge">required</span>' : '<span class="muted">optional</span>',
+      '</header>',
+      renderSchema(property, {
+        id: id + "-schema",
+        path: state.path + "." + name,
+        depth: state.depth + 1,
+        name,
+      }),
+      '</section>',
+    ].join("");
+  }).join("");
+
+  return '<div class="schema-children"><h5>Properties</h5>' + blocks + '</div>';
+}
+
+function renderSchemaSummary(schema) {
+  if (!schema) {
+    return "";
+  }
+
+  return [
+    '<p>',
+    '<span class="schema-badge">' + escapeHtml(schemaType(schema)) + '</span>',
+    schema.$ref ? " " + renderRefLink(schema.$ref) : "",
+    '</p>',
+  ].join("");
+}
+
+function renderExamples(source) {
+  const blocks = [];
+
+  if (source && Object.prototype.hasOwnProperty.call(source, "example")) {
+    blocks.push(renderExampleBlock("Example", source.example));
+  }
+
+  if (source && isPlainObject(source.examples)) {
+    for (const name of Object.keys(source.examples)) {
+      const example = source.examples[name];
+      const value = isPlainObject(example) && Object.prototype.hasOwnProperty.call(example, "value")
+        ? example.value
+        : example;
+      const title = isPlainObject(example) && example.summary ? example.summary : name;
+      blocks.push(renderExampleBlock(title, value));
+    }
+  }
+
+  return blocks.length ? '<div class="examples-list">' + blocks.join("") + '</div>' : "";
+}
+
+function renderExampleBlock(title, value) {
+  return [
+    '<section class="example-block">',
+    '<header><h4>' + escapeHtml(title) + '</h4></header>',
+    '<pre class="json-block"><code>' + escapeHtml(formatJson(value)) + '</code></pre>',
+    '</section>',
+  ].join("");
+}
+
+function renderMarkdown(value) {
+  const source = String(value || "").trim();
+
+  if (!source) {
+    return "";
+  }
+
+  const lines = source.replace(/\\r\\n?/g, "\\n").split("\\n");
+  const blocks = [];
+  let paragraph = [];
+  let listItems = [];
+  let codeLines = [];
+  let inFence = false;
+
+  function flushParagraph() {
+    if (paragraph.length) {
+      blocks.push('<p>' + renderInlineMarkdown(paragraph.join(" ")) + '</p>');
+      paragraph = [];
+    }
+  }
+
+  function flushList() {
+    if (listItems.length) {
+      blocks.push('<ul>' + listItems.map(function (item) {
+        return '<li>' + renderInlineMarkdown(item) + '</li>';
+      }).join("") + '</ul>');
+      listItems = [];
+    }
+  }
+
+  for (const line of lines) {
+    if (line.trim().startsWith("\`\`\`")) {
+      if (inFence) {
+        blocks.push('<pre><code>' + escapeHtml(codeLines.join("\\n")) + '</code></pre>');
+        codeLines = [];
+        inFence = false;
+      } else {
+        flushParagraph();
+        flushList();
+        inFence = true;
+      }
+
+      continue;
+    }
+
+    if (inFence) {
+      codeLines.push(line);
+      continue;
+    }
+
+    if (!line.trim()) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+
+    const heading = line.match(/^(#{1,6})\\s+(.+)$/);
+    if (heading) {
+      flushParagraph();
+      flushList();
+      const level = Math.min(6, heading[1].length + 2);
+      blocks.push("<h" + level + ">" + renderInlineMarkdown(heading[2]) + "</h" + level + ">");
+      continue;
+    }
+
+    const listItem = line.match(/^\\s*[-*]\\s+(.+)$/);
+    if (listItem) {
+      flushParagraph();
+      listItems.push(listItem[1]);
+      continue;
+    }
+
+    flushList();
+    paragraph.push(line.trim());
+  }
+
+  if (inFence) {
+    blocks.push('<pre><code>' + escapeHtml(codeLines.join("\\n")) + '</code></pre>');
+  }
+
+  flushParagraph();
+  flushList();
+
+  return blocks.length ? '<div class="markdown">' + blocks.join("") + '</div>' : "";
+}
+
+function renderInlineMarkdown(value) {
+  const source = String(value || "");
+  const tokenPattern = /(\`[^\`]+\`|\\[[^\\]]+\\]\\((?:https?:\\/\\/|#\\/)[^)\\s]+\\))/g;
+  let result = "";
+  let cursor = 0;
+  let match;
+
+  while ((match = tokenPattern.exec(source)) !== null) {
+    result += escapeHtml(source.slice(cursor, match.index));
+    result += renderInlineToken(match[0]);
+    cursor = match.index + match[0].length;
+  }
+
+  result += escapeHtml(source.slice(cursor));
+  return result;
+}
+
+function renderInlineToken(token) {
+  if (token.startsWith("\`") && token.endsWith("\`")) {
+    return '<code>' + escapeHtml(token.slice(1, -1)) + '</code>';
+  }
+
+  const link = token.match(/^\\[([^\\]]+)\\]\\(([^)]+)\\)$/);
+  if (link) {
+    return '<a href="' + safeUrl(link[2]) + '">' + escapeHtml(link[1]) + '</a>';
+  }
+
+  return escapeHtml(token);
+}
+
+function renderMethodBadge(method) {
+  return '<span class="method-badge method-' + escapeHtml(String(method).toLowerCase()) + '">' + escapeHtml(String(method).toUpperCase()) + '</span>';
+}
+
+function renderTopicLink(topic) {
+  return '<a href="#/topics/' + encodeRouteSegment(topic.slug) + '">' + escapeHtml(topic.title) + '</a>';
+}
+
+function renderTagLink(tag) {
+  return '<a href="#/tags/' + encodeRouteSegment(tag.slug) + '">' + escapeHtml(tag.name) + '</a>';
+}
+
+function renderOperationLink(operation) {
+  return [
+    '<span class="operation-card">',
+    '<a class="operation-link" href="#/operations/' + encodeRouteSegment(operation.id) + '">',
+    renderMethodBadge(operation.method),
+    '<span class="path-text">' + escapeHtml(operation.path) + '</span>',
+    '</a>',
+    '<span class="muted">' + escapeHtml(operation.summary || operation.operationId || operation.id) + '</span>',
+    '</span>',
+  ].join("");
+}
+
+function renderSchemaLink(schema) {
+  return '<a href="#/schemas/' + encodeRouteSegment(schema.name) + '">' + escapeHtml(schema.name) + '</a>';
+}
+
+function renderRefLink(ref) {
+  const schemaName = schemaNameFromRef(ref);
+
+  if (schemaName) {
+    return '<a href="#/schemas/' + encodeRouteSegment(schemaName) + '">' + escapeHtml(ref) + '</a>';
+  }
+
+  return '<code>' + escapeHtml(ref) + '</code>';
+}
+
+function schemaNameFromRef(ref) {
+  const prefix = "#/components/schemas/";
+
+  if (typeof ref === "string" && ref.startsWith(prefix)) {
+    return decodeJsonPointerSegment(ref.slice(prefix.length));
+  }
+
+  return "";
+}
+
+function metadataItem(label, value) {
+  return value ? '<li><strong>' + escapeHtml(label) + ':</strong> <span>' + escapeHtml(value) + '</span></li>' : "";
+}
+
+function formatJson(value) {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return JSON.stringify(value, null, 2);
+}
+
+function safeUrl(value) {
+  const url = String(value || "");
+  const isSafe =
+    /^https?:\\/\\//.test(url) ||
+    url.startsWith("#/") ||
+    url.startsWith("./") ||
+    url.startsWith("../") ||
+    /^\\/(?!\\/)/.test(url) ||
+    /^[A-Za-z0-9._-]+(?:\\/[A-Za-z0-9._-]+)*$/.test(url);
+
+  return isSafe ? escapeHtml(url) : "#/";
+}
+
+function encodeRouteSegment(value) {
+  return encodeURIComponent(String(value));
+}
+
+function decodeRouteSegment(value) {
+  try {
+    return decodeURIComponent(value);
+  } catch (error) {
+    return value;
+  }
+}
+
+function decodeJsonPointerSegment(segment) {
+  return decodeURIComponent(segment).replace(/~1/g, "/").replace(/~0/g, "~");
+}
+
+function slugify(value) {
+  const words = String(value || "")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .normalize("NFKD")
+    .replace(/[\\u0300-\\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return words || "section";
+}
+
+function escapeHtml(value) {
+  return String(value == null ? "" : value).replace(/[&<>"']/g, function (character) {
+    return {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    }[character];
+  });
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function arrayValue(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+window.addEventListener("hashchange", renderCurrentRoute);
+renderCurrentRoute();
 `;
 }
 
@@ -839,6 +1896,7 @@ function main() {
 
 function runSelfTests() {
   const assert = require("node:assert/strict");
+  const vm = require("node:vm");
   const slugs = new Set();
   const localDocument = {
     openapi: "3.0.2",
@@ -949,10 +2007,81 @@ function runSelfTests() {
   assert.doesNotMatch(indexHtml, /https?:\/\//);
   assert.match(appJs, /const apiDocsData = /);
   assert.match(appJs, /"#\/schemas\/:slug"/);
+  assert.match(appJs, /function parseRoute/);
+  assert.match(appJs, /function renderMarkdown/);
+  assert.match(appJs, /function renderSchema/);
   assert.doesNotMatch(appJs, /\bfetch\s*\(/);
   assert.equal(JSON.parse(docsJson).api.title, "Test API");
   assert.equal(escapeHtml("<script>"), "&lt;script&gt;");
   assert.match(serializeJsonForScript({ tag: "</script>" }), /\\u003c\/script>/);
+
+  const renderedOverview = renderGeneratedRoute(vm, appJs, "#/");
+  assert.match(renderedOverview, /Test API/);
+  assert.match(renderedOverview, /OpenAPI YAML/);
+
+  const renderedOperation = renderGeneratedRoute(
+    vm,
+    appJs,
+    "#/operations/get-machines-machine-slug",
+  );
+  assert.match(renderedOperation, /Machine slug/);
+  assert.match(renderedOperation, /#\/schemas\/MachineSlug/);
+  assert.match(renderedOperation, /Request Body/);
+  assert.match(renderedOperation, /Responses/);
+
+  const renderedSchema = renderGeneratedRoute(vm, appJs, "#/schemas/Error");
+  assert.match(renderedSchema, /Properties/);
+  assert.match(renderedSchema, /message/);
+
+  const renderedNotFound = renderGeneratedRoute(vm, appJs, "#/missing");
+  assert.match(renderedNotFound, /Route not found/);
+  assert.match(renderedNotFound, /Back to overview/);
+}
+
+function renderGeneratedRoute(vm, appJs, hash) {
+  const content = {
+    innerHTML: "",
+    focus() {},
+  };
+  const context = {
+    console: {
+      error(...args) {
+        throw new Error(args.join(" "));
+      },
+      log() {},
+      warn() {},
+    },
+    document: {
+      documentElement: {
+        dataset: {},
+      },
+      getElementById(id) {
+        return id === "docs-content" ? content : null;
+      },
+      querySelectorAll() {
+        return [];
+      },
+    },
+    window: {
+      location: {
+        hash,
+      },
+      addEventListener() {},
+    },
+    Set,
+    Object,
+    String,
+    Array,
+    Boolean,
+    JSON,
+    RegExp,
+    encodeURIComponent,
+    decodeURIComponent,
+  };
+
+  context.globalThis = context;
+  vm.runInNewContext(appJs, context, { filename: "generated-app.js" });
+  return content.innerHTML;
 }
 
 if (require.main === module) {
