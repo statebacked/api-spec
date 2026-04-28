@@ -1434,6 +1434,20 @@ function initializeMobileNavigation() {
     const isOpen = docsSidebar.dataset.open === "true";
     setMobileNavigation(!isOpen);
   });
+  if (docsNavigation) {
+    docsNavigation.addEventListener("click", function (event) {
+      if (isLinkClick(event.target)) {
+        closeMobileNavigation();
+      }
+    });
+  }
+  if (searchResults) {
+    searchResults.addEventListener("click", function (event) {
+      if (isLinkClick(event.target)) {
+        closeMobileNavigation();
+      }
+    });
+  }
   window.addEventListener("resize", syncMobileNavigation);
 }
 
@@ -1464,6 +1478,10 @@ function closeMobileNavigation() {
   ) {
     setMobileNavigation(false);
   }
+}
+
+function isLinkClick(target) {
+  return Boolean(target && typeof target.closest === "function" && target.closest("a"));
 }
 
 function renderOverview() {
@@ -2986,6 +3004,17 @@ function runSelfTests() {
   mobileHarness.elements["nav-toggle"].dispatchEvent({ type: "click" });
   assert.equal(mobileHarness.elements["docs-sidebar"].dataset.open, "true");
   assert.equal(mobileHarness.elements["nav-toggle"].getAttribute("aria-expanded"), "true");
+  mobileHarness.elements["docs-navigation"].dispatchEvent({
+    type: "click",
+    target: {
+      closest(selector) {
+        return selector === "a" ? {} : null;
+      },
+    },
+  });
+  assert.equal(mobileHarness.elements["docs-sidebar"].dataset.open, "false");
+  mobileHarness.elements["nav-toggle"].dispatchEvent({ type: "click" });
+  assert.equal(mobileHarness.elements["docs-sidebar"].dataset.open, "true");
   mobileHarness.window.location.hash = "#/schemas/Error";
   mobileHarness.window.dispatchEvent({ type: "hashchange" });
   assert.equal(mobileHarness.elements["docs-sidebar"].dataset.open, "false");
