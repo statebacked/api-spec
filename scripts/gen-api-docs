@@ -487,6 +487,11 @@ a:focus-visible,
   overflow-wrap: anywhere;
 }
 
+.nav-link-detail {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .nav-link-detail,
 .search-result-kind,
 .search-result-detail {
@@ -545,6 +550,10 @@ a:focus-visible,
 
 .docs-content {
   min-width: 0;
+}
+
+.docs-content:focus {
+  outline: none;
 }
 
 .route-view {
