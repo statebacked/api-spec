@@ -166,6 +166,7 @@ function pageTitle(docsData) {
 
 function renderIndexHtml(docsData) {
   const title = escapeHtml(pageTitle(docsData));
+  const version = escapeHtml(docsData.api.version || "unversioned");
 
   return `<!doctype html>
 <html lang="en">
@@ -176,15 +177,40 @@ function renderIndexHtml(docsData) {
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main class="docs-shell">
-    <h1>${title}</h1>
-    <p>Static API documentation generation is configured.</p>
-    <nav aria-label="Source files">
-      <a href="openapi.yaml">OpenAPI YAML</a>
-      <a href="openapi.json">OpenAPI JSON</a>
-      <a href="api-docs.json">Normalized docs data</a>
-    </nav>
-  </main>
+  <div class="docs-shell">
+    <header class="docs-header">
+      <div>
+        <p class="docs-kicker">OpenAPI ${version}</p>
+        <h1>${title}</h1>
+      </div>
+      <nav class="source-links" aria-label="Source downloads">
+        <a href="openapi.yaml" download>OpenAPI YAML</a>
+        <a href="openapi.json" download>OpenAPI JSON</a>
+        <a href="api-docs.json" download>Docs data</a>
+      </nav>
+    </header>
+    <div class="docs-layout">
+      <aside class="docs-sidebar" aria-label="Documentation navigation">
+        <label class="search-label" for="docs-search">Search API docs</label>
+        <input id="docs-search" class="search-input" type="search" autocomplete="off" spellcheck="false" placeholder="Search topics, endpoints, schemas">
+        <nav id="docs-navigation" class="docs-navigation" aria-label="API sections">
+          <a href="#/" data-route-id="overview">Overview</a>
+          <a href="#/topics" data-route-pattern="#/topics/:slug">Topics</a>
+          <a href="#/tags" data-route-pattern="#/tags/:slug">Tags</a>
+          <a href="#/operations" data-route-pattern="#/operations/:slug">Operations</a>
+          <a href="#/schemas" data-route-pattern="#/schemas/:slug">Schemas</a>
+        </nav>
+      </aside>
+      <main id="docs-content" class="docs-content" tabindex="-1" data-route-root="#/">
+        <section id="route-overview" data-route="#/" aria-labelledby="overview-title">
+          <p class="docs-kicker">Static API documentation</p>
+          <h2 id="overview-title">Overview</h2>
+          <p id="docs-route-status">Loading generated documentation data.</p>
+        </section>
+        <section id="route-placeholder" class="route-placeholder" hidden aria-live="polite"></section>
+      </main>
+    </div>
+  </div>
   <script src="app.js"></script>
 </body>
 </html>
@@ -195,6 +221,7 @@ function renderStylesCss() {
   return `:root {
   color-scheme: light dark;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.5;
 }
 
 body {
@@ -204,36 +231,138 @@ body {
 }
 
 .docs-shell {
-  max-width: 72rem;
+  max-width: 88rem;
   margin: 0 auto;
-  padding: 3rem 1.5rem;
+  padding: 2rem 1.5rem 4rem;
 }
 
-.docs-shell nav {
+.docs-header {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid color-mix(in srgb, CanvasText 16%, transparent);
+  padding-bottom: 1.5rem;
+}
+
+.docs-header h1,
+.docs-content h2 {
+  margin: 0;
+}
+
+.docs-kicker {
+  margin: 0 0 0.25rem;
+  color: color-mix(in srgb, CanvasText 70%, transparent);
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.source-links,
+.docs-navigation {
+  display: flex;
   gap: 0.75rem;
+}
+
+.source-links {
+  flex-wrap: wrap;
+}
+
+.source-links a,
+.docs-navigation a {
+  color: LinkText;
+}
+
+.docs-layout {
+  display: grid;
+  grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);
+  gap: 2rem;
+  padding-top: 2rem;
+}
+
+.docs-sidebar {
+  align-self: start;
+  position: sticky;
+  top: 1rem;
+}
+
+.search-label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 0.375rem;
+}
+
+.search-input {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid color-mix(in srgb, CanvasText 24%, transparent);
+  border-radius: 0.375rem;
+  background: Canvas;
+  color: CanvasText;
+  font: inherit;
+  padding: 0.625rem 0.75rem;
+}
+
+.docs-navigation {
+  flex-direction: column;
+  margin-top: 1rem;
+}
+
+.docs-content {
+  min-width: 0;
+}
+
+.route-placeholder[hidden] {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .docs-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .docs-sidebar {
+    position: static;
+  }
 }
 `;
 }
 
 function renderAppJs(docsData) {
-  const summary = {
-    title: docsData.api.title,
-    topics: docsData.topics.length,
-    tags: docsData.tags.length,
-    operations: docsData.operations.length,
-    schemas: docsData.components.schemas.length,
-    normalizedData: "api-docs.json",
+  const routeTemplates = {
+    overview: "#/",
+    topic: "#/topics/:slug",
+    tag: "#/tags/:slug",
+    operation: "#/operations/:slug",
+    schema: "#/schemas/:slug",
   };
 
   return `"use strict";
 
-const apiDocsSummary = ${serializeJsonForScript(summary)};
+const apiDocsData = ${serializeJsonForScript(docsData)};
+const apiDocsRoutes = ${serializeJsonForScript(routeTemplates)};
 
 document.documentElement.dataset.apiDocs = "generated";
-document.documentElement.dataset.apiTitle = apiDocsSummary.title;
+document.documentElement.dataset.apiTitle = apiDocsData.api.title;
+window.apiDocsData = apiDocsData;
+window.apiDocsRoutes = apiDocsRoutes;
+
+const routeStatus = document.getElementById("docs-route-status");
+
+if (routeStatus) {
+  routeStatus.textContent = [
+    apiDocsData.topics.length + " topics",
+    apiDocsData.tags.length + " tags",
+    apiDocsData.operations.length + " operations",
+    apiDocsData.components.schemas.length + " schemas",
+  ].join(" / ");
+}
 `;
+}
+
+function renderDocsDataJson(docsData) {
+  return `${JSON.stringify(docsData, null, 2)}\n`;
 }
 
 function renderFiles(spec) {
@@ -245,7 +374,7 @@ function renderFiles(spec) {
     ["app.js", renderAppJs(docsData)],
     ["openapi.yaml", spec.source],
     ["openapi.json", `${JSON.stringify(spec.document, null, 2)}\n`],
-    ["api-docs.json", `${JSON.stringify(docsData, null, 2)}\n`],
+    ["api-docs.json", renderDocsDataJson(docsData)],
     [".nojekyll", ""],
   ]);
 }
@@ -804,6 +933,26 @@ function runSelfTests() {
     () => assertOpenApiDocument({ openapi: "3.0.2", info: {} }),
     /paths object/,
   );
+
+  const docsData = normalizeApiDocs(localDocument);
+  const indexHtml = renderIndexHtml(docsData);
+  const appJs = renderAppJs(docsData);
+  const docsJson = renderDocsDataJson(docsData);
+
+  assert.match(indexHtml, /<header class="docs-header">/);
+  assert.match(indexHtml, /<aside class="docs-sidebar" aria-label="Documentation navigation">/);
+  assert.match(indexHtml, /<main id="docs-content"/);
+  assert.match(indexHtml, /<input id="docs-search"/);
+  assert.match(indexHtml, /href="openapi\.yaml"/);
+  assert.match(indexHtml, /href="openapi\.json"/);
+  assert.match(indexHtml, /data-route-pattern="#\/operations\/:slug"/);
+  assert.doesNotMatch(indexHtml, /https?:\/\//);
+  assert.match(appJs, /const apiDocsData = /);
+  assert.match(appJs, /"#\/schemas\/:slug"/);
+  assert.doesNotMatch(appJs, /\bfetch\s*\(/);
+  assert.equal(JSON.parse(docsJson).api.title, "Test API");
+  assert.equal(escapeHtml("<script>"), "&lt;script&gt;");
+  assert.match(serializeJsonForScript({ tag: "</script>" }), /\\u003c\/script>/);
 }
 
 if (require.main === module) {
