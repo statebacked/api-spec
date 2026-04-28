@@ -3,11 +3,28 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const childProcess = require("node:child_process");
 const fs = require("node:fs");
 const http = require("node:http");
+const os = require("node:os");
 const path = require("node:path");
 
 const DOCS_DIR = path.resolve(process.cwd(), "docs");
+const LOCAL_LIBRARY_PACKAGES = Object.freeze([
+  "libatk1.0-0",
+  "libatk-bridge2.0-0",
+  "libatspi2.0-0",
+  "libdrm2",
+  "libgbm1",
+  "libwayland-server0",
+  "libxcomposite1",
+  "libxdamage1",
+  "libxfixes3",
+  "libxi6",
+  "libxkbcommon0",
+  "libxcb-randr0",
+  "libxrandr2",
+]);
 const VIEWPORTS = Object.freeze([390, 768, 1440]);
 const SEARCH_QUERIES = Object.freeze([
   "machines",
@@ -25,7 +42,7 @@ async function main() {
   let server;
 
   try {
-    browser = await chromium.launch();
+    browser = await launchChromium(chromium);
     server = await serveStaticDocs(DOCS_DIR);
     const baseUrl = `http://127.0.0.1:${server.address().port}/`;
 
@@ -38,6 +55,124 @@ async function main() {
   }
 
   console.log("Browser docs checks passed");
+}
+
+async function launchChromium(chromium) {
+  try {
+    return await chromium.launch();
+  } catch (error) {
+    if (!isMissingSharedLibraryError(error)) {
+      throw error;
+    }
+
+    const libraryPath = ensureLocalChromiumLibraries();
+    return chromium.launch({
+      env: Object.assign({}, process.env, {
+        LD_LIBRARY_PATH: joinLibraryPath(libraryPath, process.env.LD_LIBRARY_PATH),
+      }),
+    });
+  }
+}
+
+function isMissingSharedLibraryError(error) {
+  return /error while loading shared libraries: .* cannot open shared object file/.test(
+    String(error && (error.stack || error.message) || ""),
+  );
+}
+
+function ensureLocalChromiumLibraries() {
+  if (process.platform !== "linux") {
+    throw new Error("Chromium is missing native libraries. Install Playwright browser dependencies for this platform.");
+  }
+
+  const release = readOsRelease();
+  if (release.ID !== "ubuntu" || release.VERSION_ID !== "22.04") {
+    throw new Error(
+      "Chromium is missing native libraries. Run `npx playwright install-deps chromium` or install the required system packages.",
+    );
+  }
+
+  const cacheRoot = path.join(os.homedir(), ".cache", "api-spec-playwright-libs", "ubuntu-22.04");
+  const libraryRoot = path.join(cacheRoot, "root");
+  const libraryPath = path.join(libraryRoot, "usr", "lib", "x86_64-linux-gnu");
+  const markerPath = path.join(cacheRoot, ".complete");
+
+  if (fs.existsSync(markerPath) && fs.existsSync(path.join(libraryPath, "libatk-1.0.so.0"))) {
+    return libraryPath;
+  }
+
+  fs.rmSync(cacheRoot, { force: true, recursive: true });
+  fs.mkdirSync(cacheRoot, { recursive: true });
+
+  const aptRoot = fs.mkdtempSync(path.join(os.tmpdir(), "api-spec-apt-"));
+  const packageRoot = path.join(cacheRoot, "packages");
+
+  try {
+    fs.mkdirSync(path.join(aptRoot, "state"), { recursive: true });
+    fs.mkdirSync(path.join(aptRoot, "lists", "partial"), { recursive: true });
+    fs.mkdirSync(path.join(aptRoot, "cache", "archives", "partial"), { recursive: true });
+    fs.mkdirSync(packageRoot, { recursive: true });
+
+    runCommand("apt-get", aptOptions(aptRoot).concat(["update"]));
+    runCommand("apt-get", aptOptions(aptRoot).concat(["download"]).concat(LOCAL_LIBRARY_PACKAGES), {
+      cwd: packageRoot,
+    });
+
+    for (const packageFile of fs.readdirSync(packageRoot).filter((fileName) => fileName.endsWith(".deb"))) {
+      runCommand("dpkg-deb", ["-x", path.join(packageRoot, packageFile), libraryRoot]);
+    }
+
+    fs.writeFileSync(markerPath, "ok\n", "utf8");
+    return libraryPath;
+  } catch (error) {
+    throw new Error(
+      [
+        "Chromium is missing native libraries and local dependency provisioning failed.",
+        "Run `npx playwright install-deps chromium` on a system with sudo, or install the missing libraries manually.",
+        error.stack || error.message,
+      ].join("\n"),
+    );
+  } finally {
+    fs.rmSync(aptRoot, { force: true, recursive: true });
+  }
+}
+
+function aptOptions(aptRoot) {
+  return [
+    "-o",
+    `Dir::State=${path.join(aptRoot, "state")}`,
+    "-o",
+    `Dir::State::lists=${path.join(aptRoot, "lists")}`,
+    "-o",
+    `Dir::Cache=${path.join(aptRoot, "cache")}`,
+  ];
+}
+
+function runCommand(command, args, options = {}) {
+  childProcess.execFileSync(command, args, {
+    cwd: options.cwd || process.cwd(),
+    stdio: "pipe",
+  });
+}
+
+function readOsRelease() {
+  const entries = {};
+  const content = fs.existsSync("/etc/os-release")
+    ? fs.readFileSync("/etc/os-release", "utf8")
+    : "";
+
+  for (const line of content.split(/\r?\n/)) {
+    const match = /^([A-Z_]+)=(.*)$/.exec(line);
+    if (match) {
+      entries[match[1]] = match[2].replace(/^"|"$/g, "");
+    }
+  }
+
+  return entries;
+}
+
+function joinLibraryPath(libraryPath, existingPath) {
+  return existingPath ? `${libraryPath}:${existingPath}` : libraryPath;
 }
 
 function requirePlaywright() {
