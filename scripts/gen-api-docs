@@ -1276,7 +1276,16 @@ function routeToHash(route) {
     return "#/" + route.type;
   }
 
-  return "#/" + collectionName(route.type) + "/" + encodeRouteSegment(route.key || "");
+  return "#/" + collectionName(route.type) + "/" + encodeRouteSegment(canonicalRouteKey(route));
+}
+
+function canonicalRouteKey(route) {
+  if (route.type === "schema") {
+    const schema = docsIndex.schemasByName[route.key] || docsIndex.schemasBySlug[route.key];
+    return schema ? schema.name : route.key || "";
+  }
+
+  return route.key || "";
 }
 
 function collectionName(type) {
@@ -3062,6 +3071,9 @@ function runSelfTests() {
     "#/operations/get-machines-machine-slug",
   );
   directRouteHarness.window.location.hash = "#/schemas/Error";
+  directRouteHarness.window.dispatchEvent({ type: "hashchange" });
+  assert.equal(activeNavigationHref(directRouteHarness), "#/schemas/Error");
+  directRouteHarness.window.location.hash = "#/schemas/error";
   directRouteHarness.window.dispatchEvent({ type: "hashchange" });
   assert.equal(activeNavigationHref(directRouteHarness), "#/schemas/Error");
 
