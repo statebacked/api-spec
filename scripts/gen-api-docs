@@ -315,7 +315,7 @@ body {
 }
 
 .docs-header h1 {
-  font-size: clamp(1.65rem, 3vw, 2.35rem);
+  font-size: 2.25rem;
   line-height: 1.1;
 }
 
@@ -558,7 +558,7 @@ a:focus-visible,
 }
 
 .route-heading h2 {
-  font-size: clamp(1.75rem, 3vw, 2.75rem);
+  font-size: 2.5rem;
   line-height: 1.1;
   overflow-wrap: anywhere;
 }
@@ -833,6 +833,10 @@ code {
 
   .route-heading h2 {
     font-size: 1.65rem;
+  }
+
+  .docs-header h1 {
+    font-size: 1.75rem;
   }
 
   .content-section,
@@ -2644,12 +2648,35 @@ function runSelfTests() {
     openapi: "3.0.2",
     info: {
       title: "Test API",
+      description: "A compact API used to verify generated documentation behavior.",
       version: "1.0.0",
     },
+    "x-topics": [
+      {
+        title: "Authentication",
+        content: "Use a token to authenticate API requests.",
+      },
+      {
+        title: "Realtime Logs",
+        content: "Connect over websocket links to inspect machine logs.",
+      },
+    ],
+    tags: [
+      {
+        name: "Machine versions",
+        description: "Manage machines and machine runtime details.",
+      },
+      {
+        name: "Billing",
+        description: "Billing account operations and invoices.",
+      },
+    ],
     paths: {
       "/machines/{machineSlug}": {
         get: {
           tags: ["Machine versions"],
+          summary: "Read a machine",
+          description: "Read details for a machine by slug.",
           parameters: [
             {
               name: "machineSlug",
@@ -2665,6 +2692,47 @@ function runSelfTests() {
           responses: {
             "403": {
               $ref: "#/components/responses/Forbidden",
+            },
+          },
+        },
+      },
+      "/machines/{machineSlug}/logs": {
+        get: {
+          tags: ["Machine versions"],
+          summary: "Stream machine logs",
+          description: "Open a websocket stream for machine logs.",
+          parameters: [
+            {
+              name: "machineSlug",
+              in: "path",
+              description: "Machine slug used for log lookup.",
+              schema: {
+                $ref: "#/components/schemas/MachineSlug",
+              },
+            },
+          ],
+          responses: {
+            "200": {
+              description: "Log stream websocket details",
+            },
+          },
+        },
+      },
+      "/billing": {
+        get: {
+          tags: ["Billing"],
+          summary: "Read billing account",
+          description: "Returns the current billing account status.",
+          responses: {
+            "200": {
+              description: "Billing account response",
+              content: {
+                "application/json": {
+                  schema: {
+                    $ref: "#/components/schemas/BillingAccount",
+                  },
+                },
+              },
             },
           },
         },
@@ -2702,9 +2770,21 @@ function runSelfTests() {
         },
         Error: {
           type: "object",
+          description: "Error response body",
           properties: {
             message: {
               type: "string",
+              description: "Human-readable error message",
+            },
+          },
+        },
+        BillingAccount: {
+          type: "object",
+          description: "Billing account details",
+          properties: {
+            status: {
+              type: "string",
+              description: "Billing status",
             },
           },
         },
@@ -2738,8 +2818,10 @@ function runSelfTests() {
   assert.equal(uniqueSlug(slugs, "Duplicate Tag"), "duplicate-tag-2");
 
   const operations = normalizeOperations(localDocument);
-  assert.equal(operations.length, 1);
+  assert.equal(operations.length, 3);
   assert.equal(operations[0].id, "get-machines-machine-slug");
+  assert.equal(operations[1].id, "get-machines-machine-slug-logs");
+  assert.equal(operations[2].id, "get-billing");
   assert.equal(operations[0].parameters[0].schema.description, "Machine slug");
   assert.equal(operations[0].requestBody.description, "Create a machine");
   assert.equal(operations[0].responses[0].description, "Forbidden");
@@ -2760,6 +2842,7 @@ function runSelfTests() {
     "#/components/schemas/StateValue",
   );
   const indexHtml = renderIndexHtml(docsData);
+  const stylesCss = renderStylesCss();
   const appJs = renderAppJs(docsData);
   const docsJson = renderDocsDataJson(docsData);
 
@@ -2784,6 +2867,13 @@ function runSelfTests() {
   assert.match(appJs, /function renderMarkdown/);
   assert.match(appJs, /function renderSchema/);
   assert.doesNotMatch(appJs, /\bfetch\s*\(/);
+  assert.match(stylesCss, /\.docs-layout/);
+  assert.match(stylesCss, /@media \(max-width: 900px\)/);
+  assert.match(stylesCss, /@media \(max-width: 520px\)/);
+  assert.match(stylesCss, /overflow-wrap: anywhere/);
+  assert.match(stylesCss, /\.parameter-table-wrapper[\s\S]*overflow-x: auto/);
+  assert.doesNotMatch(stylesCss, /font-size:\s*clamp\([^;]*vw/i);
+  assert.doesNotMatch(stylesCss, /font-size:[^;]*vw/i);
   assert.equal(JSON.parse(docsJson).api.title, "Test API");
   assert.equal(escapeHtml("<script>"), "&lt;script&gt;");
   assert.match(serializeJsonForScript({ tag: "</script>" }), /\\u003c\/script>/);
@@ -2813,12 +2903,138 @@ function runSelfTests() {
   const renderedNotFound = renderGeneratedRoute(vm, appJs, "#/missing");
   assert.match(renderedNotFound, /Route not found/);
   assert.match(renderedNotFound, /Back to overview/);
+
+  const searchHarness = createGeneratedAppHarness(vm, appJs, { hash: "#/" });
+  assertSearchResult(searchHarness, "machines", /href="#\/operations\/get-machines-machine-slug/);
+  assertSearchResult(searchHarness, "token", /href="#\/topics\/authentication/);
+  assertSearchResult(searchHarness, "logs", /href="#\/operations\/get-machines-machine-slug-logs/);
+  assertSearchResult(searchHarness, "websocket", /href="#\/operations\/get-machines-machine-slug-logs/);
+  assertSearchResult(searchHarness, "machineSlug", /href="#\/operations\/get-machines-machine-slug/);
+  assertSearchResult(searchHarness, "billing", /href="#\/tags\/billing|href="#\/operations\/get-billing|href="#\/schemas\/BillingAccount/);
+
+  const directRouteHarness = createGeneratedAppHarness(vm, appJs, {
+    hash: "#/operations/get-machines-machine-slug",
+  });
+  assert.equal(
+    activeNavigationHref(directRouteHarness),
+    "#/operations/get-machines-machine-slug",
+  );
+  directRouteHarness.window.location.hash = "#/schemas/Error";
+  directRouteHarness.window.dispatchEvent({ type: "hashchange" });
+  assert.equal(activeNavigationHref(directRouteHarness), "#/schemas/Error");
+
+  const sharedStorage = createMemoryStorage();
+  const themeHarness = createGeneratedAppHarness(vm, appJs, { storage: sharedStorage });
+  assert.equal(themeHarness.document.documentElement.dataset.theme, "light");
+  themeHarness.elements["theme-toggle"].dispatchEvent({ type: "click" });
+  assert.equal(themeHarness.document.documentElement.dataset.theme, "dark");
+  assert.equal(sharedStorage.getItem("api-docs-theme"), "dark");
+  const reloadedThemeHarness = createGeneratedAppHarness(vm, appJs, { storage: sharedStorage });
+  assert.equal(reloadedThemeHarness.document.documentElement.dataset.theme, "dark");
+  assert.equal(reloadedThemeHarness.elements["theme-toggle"].getAttribute("aria-pressed"), "true");
+
+  const mobileHarness = createGeneratedAppHarness(vm, appJs, {
+    hash: "#/operations/get-machines-machine-slug",
+    viewportWidth: 390,
+  });
+  assert.equal(mobileHarness.elements["docs-sidebar"].dataset.open, "false");
+  assert.equal(mobileHarness.elements["nav-toggle"].getAttribute("aria-expanded"), "false");
+  mobileHarness.elements["nav-toggle"].dispatchEvent({ type: "click" });
+  assert.equal(mobileHarness.elements["docs-sidebar"].dataset.open, "true");
+  assert.equal(mobileHarness.elements["nav-toggle"].getAttribute("aria-expanded"), "true");
+  mobileHarness.window.location.hash = "#/schemas/Error";
+  mobileHarness.window.dispatchEvent({ type: "hashchange" });
+  assert.equal(mobileHarness.elements["docs-sidebar"].dataset.open, "false");
+
+  const tabletHarness = createGeneratedAppHarness(vm, appJs, { viewportWidth: 768 });
+  assert.equal(tabletHarness.elements["docs-sidebar"].dataset.open, "false");
+  const desktopHarness = createGeneratedAppHarness(vm, appJs, { viewportWidth: 1440 });
+  assert.equal(desktopHarness.elements["nav-toggle"].getAttribute("aria-expanded"), "true");
+  assert.equal(Object.prototype.hasOwnProperty.call(desktopHarness.elements["docs-sidebar"].dataset, "open"), false);
 }
 
 function renderGeneratedRoute(vm, appJs, hash) {
-  const content = {
-    innerHTML: "",
-    focus() {},
+  return createGeneratedAppHarness(vm, appJs, { hash }).elements["docs-content"].innerHTML;
+}
+
+function assertSearchResult(harness, query, hrefPattern) {
+  const assert = require("node:assert/strict");
+  const searchInput = harness.elements["docs-search"];
+  const searchResults = harness.elements["search-results"];
+  searchInput.value = query;
+  searchInput.dispatchEvent({ type: "input" });
+  assert.equal(searchResults.dataset.active, "true");
+  assert.match(searchResults.innerHTML, hrefPattern);
+}
+
+function activeNavigationHref(harness) {
+  const activeLink = harness.document
+    .querySelectorAll("#docs-navigation a")
+    .find((link) => link.getAttribute("aria-current") === "page");
+
+  return activeLink ? activeLink.getAttribute("href") : "";
+}
+
+function createGeneratedAppHarness(vm, appJs, options = {}) {
+  const storage = options.storage || createMemoryStorage();
+  const elements = {
+    "docs-content": createTestElement("docs-content"),
+    "docs-navigation": createTestElement("docs-navigation"),
+    "docs-search": createTestElement("docs-search"),
+    "search-results": createTestElement("search-results"),
+    "theme-toggle": createTestElement("theme-toggle", {
+      children: {
+        "[data-theme-label]": createTestElement("theme-label"),
+        "[data-theme-icon]": createTestElement("theme-icon"),
+      },
+    }),
+    "nav-toggle": createTestElement("nav-toggle"),
+    "docs-sidebar": createTestElement("docs-sidebar"),
+  };
+  const documentListeners = {};
+  const windowListeners = {};
+  const viewportWidth = options.viewportWidth || 1440;
+  const document = {
+    documentElement: {
+      dataset: {},
+    },
+    getElementById(id) {
+      return elements[id] || null;
+    },
+    querySelectorAll(selector) {
+      if (selector === "#docs-navigation a") {
+        return elements["docs-navigation"].links;
+      }
+
+      return [];
+    },
+    addEventListener(type, handler) {
+      documentListeners[type] = documentListeners[type] || [];
+      documentListeners[type].push(handler);
+    },
+  };
+  const window = {
+    location: {
+      hash: options.hash || "#/",
+    },
+    addEventListener(type, handler) {
+      windowListeners[type] = windowListeners[type] || [];
+      windowListeners[type].push(handler);
+    },
+    dispatchEvent(event) {
+      for (const handler of windowListeners[event.type] || []) {
+        handler(event);
+      }
+    },
+    matchMedia(query) {
+      const maxWidth = /\(max-width:\s*(\d+)px\)/.exec(query);
+      return {
+        matches: maxWidth ? viewportWidth <= Number(maxWidth[1]) : false,
+        media: query,
+        addEventListener() {},
+        removeEventListener() {},
+      };
+    },
   };
   const context = {
     console: {
@@ -2828,23 +3044,9 @@ function renderGeneratedRoute(vm, appJs, hash) {
       log() {},
       warn() {},
     },
-    document: {
-      documentElement: {
-        dataset: {},
-      },
-      getElementById(id) {
-        return id === "docs-content" ? content : null;
-      },
-      querySelectorAll() {
-        return [];
-      },
-    },
-    window: {
-      location: {
-        hash,
-      },
-      addEventListener() {},
-    },
+    document,
+    window,
+    localStorage: storage,
     Set,
     Object,
     String,
@@ -2858,7 +3060,135 @@ function renderGeneratedRoute(vm, appJs, hash) {
 
   context.globalThis = context;
   vm.runInNewContext(appJs, context, { filename: "generated-app.js" });
-  return content.innerHTML;
+
+  return {
+    context,
+    document,
+    elements,
+    storage,
+    window,
+  };
+}
+
+function createTestElement(id, options = {}) {
+  const attributes = new Map();
+  const children = options.children || {};
+  const element = {
+    id,
+    dataset: {},
+    links: [],
+    listeners: {},
+    value: "",
+    textContent: "",
+    addEventListener(type, handler) {
+      this.listeners[type] = this.listeners[type] || [];
+      this.listeners[type].push(handler);
+    },
+    dispatchEvent(event) {
+      for (const handler of this.listeners[event.type] || []) {
+        handler(event);
+      }
+    },
+    setAttribute(name, value) {
+      attributes.set(name, String(value));
+      syncDatasetAttribute(this, name, String(value));
+    },
+    getAttribute(name) {
+      return attributes.has(name) ? attributes.get(name) : null;
+    },
+    removeAttribute(name) {
+      attributes.delete(name);
+      if (name.startsWith("data-")) {
+        delete this.dataset[dataAttributeName(name)];
+      }
+    },
+    toggleAttribute(name, force) {
+      if (force === false) {
+        this.removeAttribute(name);
+        return false;
+      }
+
+      this.setAttribute(name, "");
+      return true;
+    },
+    querySelector(selector) {
+      return children[selector] || null;
+    },
+    focus() {},
+    blur() {},
+  };
+  let innerHtml = "";
+  Object.defineProperty(element, "innerHTML", {
+    get() {
+      return innerHtml;
+    },
+    set(value) {
+      innerHtml = String(value);
+      if (id === "docs-navigation") {
+        element.links = parseAnchorElements(innerHtml);
+      }
+    },
+  });
+
+  return element;
+}
+
+function parseAnchorElements(html) {
+  const links = [];
+  const pattern = /<a\b([^>]*)>/g;
+  let match;
+
+  while ((match = pattern.exec(html))) {
+    const link = createTestElement("anchor");
+    const attributes = match[1];
+    const attrPattern = /([A-Za-z0-9:-]+)="([^"]*)"/g;
+    let attrMatch;
+
+    while ((attrMatch = attrPattern.exec(attributes))) {
+      link.setAttribute(attrMatch[1], decodeHtmlAttribute(attrMatch[2]));
+    }
+
+    links.push(link);
+  }
+
+  return links;
+}
+
+function decodeHtmlAttribute(value) {
+  return String(value)
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function syncDatasetAttribute(element, name, value) {
+  if (name.startsWith("data-")) {
+    element.dataset[dataAttributeName(name)] = value;
+  }
+}
+
+function dataAttributeName(name) {
+  return name
+    .slice(5)
+    .replace(/-([a-z])/g, (_match, character) => character.toUpperCase());
+}
+
+function createMemoryStorage() {
+  const values = new Map();
+
+  return {
+    getItem(key) {
+      return values.has(key) ? values.get(key) : null;
+    },
+    setItem(key, value) {
+      values.set(key, String(value));
+    },
+    removeItem(key) {
+      values.delete(key);
+    },
+  };
 }
 
 if (require.main === module) {
