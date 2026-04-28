@@ -4,7 +4,7 @@
   "description": "OpenAPI specification for StateBacked.dev XState backend as a service",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "scripts/gen-api-docs --self-test",
     "bump": "bump",
     "gen-api-docs": "scripts/gen-api-docs"
   },

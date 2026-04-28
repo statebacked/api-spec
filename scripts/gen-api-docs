@@ -8,6 +8,16 @@ const yaml = require("js-yaml");
 
 const DEFAULT_SPEC = "statebacked.openapi.v3.yaml";
 const DEFAULT_OUT = "docs";
+const HTTP_METHODS = Object.freeze([
+  "get",
+  "put",
+  "post",
+  "delete",
+  "options",
+  "head",
+  "patch",
+  "trace",
+]);
 
 const GENERATED_FILES = Object.freeze([
   "index.html",
@@ -15,6 +25,7 @@ const GENERATED_FILES = Object.freeze([
   "app.js",
   "openapi.yaml",
   "openapi.json",
+  "api-docs.json",
   ".nojekyll",
 ]);
 
@@ -25,14 +36,27 @@ class UsageError extends Error {
   }
 }
 
+class GenerationError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "GenerationError";
+  }
+}
+
 function parseArgs(argv) {
   const options = {
     spec: DEFAULT_SPEC,
     out: DEFAULT_OUT,
+    selfTest: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
+
+    if (arg === "--self-test") {
+      options.selfTest = true;
+      continue;
+    }
 
     if (arg === "--spec" || arg === "--out") {
       const value = argv[index + 1];
@@ -80,13 +104,44 @@ function assertSpecExists(specPath) {
   }
 }
 
-function readSpec(specPath) {
+function loadSpec(specPath) {
   const source = fs.readFileSync(specPath, "utf8");
+  let document;
+
+  try {
+    document = yaml.load(source);
+  } catch (error) {
+    if (error && error.name === "YAMLException") {
+      throw new GenerationError(
+        `Unable to parse OpenAPI YAML at ${specPath}: ${error.reason || error.message}`,
+      );
+    }
+
+    throw error;
+  }
 
   return {
     source,
-    document: yaml.load(source),
+    document,
   };
+}
+
+function assertOpenApiDocument(document) {
+  if (!isPlainObject(document)) {
+    throw new GenerationError("OpenAPI document must be a YAML mapping/object.");
+  }
+
+  if (typeof document.openapi !== "string" || !document.openapi.trim()) {
+    throw new GenerationError("OpenAPI document must include an openapi version string.");
+  }
+
+  if (!isPlainObject(document.info)) {
+    throw new GenerationError("OpenAPI document must include an info object.");
+  }
+
+  if (!isPlainObject(document.paths)) {
+    throw new GenerationError("OpenAPI document must include a paths object.");
+  }
 }
 
 function prepareOutput(outDir) {
@@ -100,18 +155,17 @@ function prepareOutput(outDir) {
   }
 }
 
-function pageTitle(openApiDocument) {
-  return openApiDocument &&
-    typeof openApiDocument === "object" &&
-    openApiDocument.info &&
-    typeof openApiDocument.info.title === "string" &&
-    openApiDocument.info.title.trim()
-    ? openApiDocument.info.title.trim()
+function pageTitle(docsData) {
+  return docsData &&
+    docsData.api &&
+    typeof docsData.api.title === "string" &&
+    docsData.api.title.trim()
+    ? docsData.api.title.trim()
     : "API Documentation";
 }
 
-function renderIndexHtml(openApiDocument) {
-  const title = escapeHtml(pageTitle(openApiDocument));
+function renderIndexHtml(docsData) {
+  const title = escapeHtml(pageTitle(docsData));
 
   return `<!doctype html>
 <html lang="en">
@@ -128,6 +182,7 @@ function renderIndexHtml(openApiDocument) {
     <nav aria-label="Source files">
       <a href="openapi.yaml">OpenAPI YAML</a>
       <a href="openapi.json">OpenAPI JSON</a>
+      <a href="api-docs.json">Normalized docs data</a>
     </nav>
   </main>
   <script src="app.js"></script>
@@ -162,32 +217,439 @@ body {
 `;
 }
 
-function renderAppJs() {
+function renderAppJs(docsData) {
+  const summary = {
+    title: docsData.api.title,
+    topics: docsData.topics.length,
+    tags: docsData.tags.length,
+    operations: docsData.operations.length,
+    schemas: docsData.components.schemas.length,
+    normalizedData: "api-docs.json",
+  };
+
   return `"use strict";
 
+const apiDocsSummary = ${serializeJsonForScript(summary)};
+
 document.documentElement.dataset.apiDocs = "generated";
+document.documentElement.dataset.apiTitle = apiDocsSummary.title;
 `;
 }
 
 function renderFiles(spec) {
+  const docsData = normalizeApiDocs(spec.document);
+
   return new Map([
-    ["index.html", renderIndexHtml(spec.document)],
+    ["index.html", renderIndexHtml(docsData)],
     ["styles.css", renderStylesCss()],
-    ["app.js", renderAppJs()],
-    ["openapi.yaml", normalizeGeneratedYaml(spec.source)],
+    ["app.js", renderAppJs(docsData)],
+    ["openapi.yaml", spec.source],
     ["openapi.json", `${JSON.stringify(spec.document, null, 2)}\n`],
+    ["api-docs.json", `${JSON.stringify(docsData, null, 2)}\n`],
     [".nojekyll", ""],
   ]);
-}
-
-function normalizeGeneratedYaml(source) {
-  return source.replace(/[ \t]+$/gm, "");
 }
 
 function writeFiles(outDir, files) {
   for (const [fileName, content] of files) {
     fs.writeFileSync(path.join(outDir, fileName), content, "utf8");
   }
+}
+
+function normalizeApiDocs(document) {
+  const operations = normalizeOperations(document);
+  const tags = normalizeTags(document, operations);
+
+  return {
+    api: normalizeApiInfo(document),
+    topics: normalizeTopics(document),
+    tags,
+    operations,
+    components: normalizeComponents(document),
+    source: {
+      openApiYaml: "openapi.yaml",
+      openApiJson: "openapi.json",
+    },
+  };
+}
+
+function normalizeApiInfo(document) {
+  const info = document.info || {};
+
+  return {
+    openapi: document.openapi,
+    title: stringValue(info.title),
+    description: stringValue(info.description),
+    version: stringValue(info.version),
+    servers: arrayValue(document.servers),
+    externalDocs: objectValue(document.externalDocs),
+  };
+}
+
+function normalizeTopics(document) {
+  const slugs = new Set();
+
+  return arrayValue(document["x-topics"]).map((topic, index) => {
+    const title = stringValue(topic && topic.title) || `Topic ${index + 1}`;
+    const slug = uniqueSlug(slugs, title);
+
+    return {
+      title,
+      content: stringValue(topic && topic.content),
+      slug,
+      routeId: `topic-${slug}`,
+    };
+  });
+}
+
+function normalizeTags(document, operations) {
+  const slugs = new Set();
+  const operationIdsByTag = new Map();
+
+  for (const operation of operations) {
+    const tagName = operation.primaryTag;
+    const operationIds = operationIdsByTag.get(tagName) || [];
+    operationIds.push(operation.id);
+    operationIdsByTag.set(tagName, operationIds);
+  }
+
+  const declaredTags = arrayValue(document.tags).map((tag) => {
+    const name = stringValue(tag && tag.name) || "Untagged";
+    const slug = uniqueSlug(slugs, name);
+
+    return {
+      name,
+      description: stringValue(tag && tag.description),
+      slug,
+      routeId: `tag-${slug}`,
+      operationIds: operationIdsByTag.get(name) || [],
+    };
+  });
+
+  const declaredNames = new Set(declaredTags.map((tag) => tag.name));
+  const inferredTags = Array.from(operationIdsByTag.keys())
+    .filter((name) => !declaredNames.has(name))
+    .map((name) => {
+      const slug = uniqueSlug(slugs, name);
+
+      return {
+        name,
+        description: "",
+        slug,
+        routeId: `tag-${slug}`,
+        operationIds: operationIdsByTag.get(name) || [],
+      };
+    });
+
+  return declaredTags.concat(inferredTags);
+}
+
+function normalizeOperations(document) {
+  const operations = [];
+  const ids = new Set();
+
+  for (const [pathName, pathItem] of Object.entries(document.paths)) {
+    if (!isPlainObject(pathItem)) {
+      continue;
+    }
+
+    const pathParameters = arrayValue(pathItem.parameters);
+
+    for (const [maybeMethod, operation] of Object.entries(pathItem)) {
+      const method = maybeMethod.toLowerCase();
+
+      if (!HTTP_METHODS.includes(method) || !isPlainObject(operation)) {
+        continue;
+      }
+
+      const operationId = stringValue(operation.operationId) || operationRouteId(method, pathName);
+      const id = uniqueId(ids, operationId);
+      const tags = arrayValue(operation.tags).map(stringValue).filter(Boolean);
+      const primaryTag = tags[0] || "Untagged";
+
+      operations.push({
+        id,
+        operationId,
+        routeId: `operation-${operationRouteId(method, pathName)}`,
+        method,
+        path: pathName,
+        summary: stringValue(operation.summary),
+        description: stringValue(operation.description),
+        tags,
+        primaryTag,
+        parameters: pathParameters
+          .concat(arrayValue(operation.parameters))
+          .map((parameter) => normalizeParameter(document, parameter)),
+        security: arrayValue(operation.security),
+        requestBody: normalizeRequestBody(document, operation.requestBody),
+        responses: normalizeResponses(document, operation.responses),
+      });
+    }
+  }
+
+  return operations;
+}
+
+function normalizeComponents(document) {
+  const components = objectValue(document.components);
+
+  return {
+    schemas: normalizeComponentMap(
+      components.schemas,
+      (name, schema) => normalizeComponentSchema(document, name, schema),
+    ),
+    requestBodies: normalizeComponentMap(
+      components.requestBodies,
+      (name, requestBody) => ({
+        name,
+        routeId: `request-body-${slugify(name)}`,
+        ...normalizeRequestBody(document, requestBody),
+      }),
+    ),
+    responses: normalizeComponentMap(
+      components.responses,
+      (name, response) => ({
+        name,
+        routeId: `response-${slugify(name)}`,
+        ...normalizeResponse(document, name, response),
+      }),
+    ),
+  };
+}
+
+function normalizeComponentMap(componentMap, normalize) {
+  if (!isPlainObject(componentMap)) {
+    return [];
+  }
+
+  return Object.entries(componentMap).map(([name, value]) => normalize(name, value));
+}
+
+function normalizeComponentSchema(document, name, schema) {
+  const ref = `#/components/schemas/${encodeJsonPointerSegment(name)}`;
+  const shape = resolveDisplayValue(document, schema, new Set([ref]));
+
+  return {
+    name,
+    description: stringValue(shape && shape.description),
+    routeId: `schema-${slugify(name)}`,
+    ref,
+    shape,
+  };
+}
+
+function normalizeParameter(document, parameter) {
+  const ref = isPlainObject(parameter) ? parameter.$ref : undefined;
+  const resolved = resolveDisplayValue(document, parameter);
+
+  return {
+    ref: stringValue(ref),
+    name: stringValue(resolved && resolved.name),
+    in: stringValue(resolved && resolved.in),
+    description: stringValue(resolved && resolved.description),
+    required: Boolean(resolved && resolved.required),
+    deprecated: Boolean(resolved && resolved.deprecated),
+    schema: normalizeSchemaForDisplay(document, resolved && resolved.schema),
+    examples: objectValue(resolved && resolved.examples),
+    example: resolved && Object.prototype.hasOwnProperty.call(resolved, "example")
+      ? resolved.example
+      : undefined,
+  };
+}
+
+function normalizeRequestBody(document, requestBody) {
+  if (!requestBody) {
+    return null;
+  }
+
+  const ref = isPlainObject(requestBody) ? requestBody.$ref : undefined;
+  const resolved = resolveDisplayValue(document, requestBody);
+
+  return {
+    ref: stringValue(ref),
+    description: stringValue(resolved && resolved.description),
+    required: Boolean(resolved && resolved.required),
+    content: normalizeContent(document, resolved && resolved.content),
+    shape: resolved,
+  };
+}
+
+function normalizeResponses(document, responses) {
+  if (!isPlainObject(responses)) {
+    return [];
+  }
+
+  return Object.entries(responses).map(([status, response]) =>
+    normalizeResponse(document, status, response),
+  );
+}
+
+function normalizeResponse(document, status, response) {
+  const ref = isPlainObject(response) ? response.$ref : undefined;
+  const resolved = resolveDisplayValue(document, response);
+
+  return {
+    status: String(status),
+    ref: stringValue(ref),
+    description: stringValue(resolved && resolved.description),
+    headers: objectValue(resolved && resolved.headers),
+    content: normalizeContent(document, resolved && resolved.content),
+    shape: resolved,
+  };
+}
+
+function normalizeContent(document, content) {
+  if (!isPlainObject(content)) {
+    return [];
+  }
+
+  return Object.entries(content).map(([mediaType, media]) => ({
+    mediaType,
+    schema: normalizeSchemaForDisplay(document, media && media.schema),
+    examples: objectValue(media && media.examples),
+    example: media && Object.prototype.hasOwnProperty.call(media, "example")
+      ? media.example
+      : undefined,
+    encoding: objectValue(media && media.encoding),
+  }));
+}
+
+function normalizeSchemaForDisplay(document, schema) {
+  return schema ? resolveDisplayValue(document, schema) : null;
+}
+
+function resolveDisplayValue(document, value, seenRefs = new Set()) {
+  if (Array.isArray(value)) {
+    return value.map((item) => resolveDisplayValue(document, item, seenRefs));
+  }
+
+  if (!isPlainObject(value)) {
+    return value;
+  }
+
+  if (typeof value.$ref === "string") {
+    if (seenRefs.has(value.$ref)) {
+      return {
+        $ref: value.$ref,
+        circular: true,
+      };
+    }
+
+    const nextSeenRefs = new Set(seenRefs);
+    nextSeenRefs.add(value.$ref);
+    const resolved = resolveDisplayValue(
+      document,
+      resolveLocalRef(document, value.$ref),
+      nextSeenRefs,
+    );
+
+    if (isPlainObject(resolved)) {
+      return {
+        $ref: value.$ref,
+        ...resolved,
+      };
+    }
+
+    return resolved;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, nested]) => [
+      key,
+      resolveDisplayValue(document, nested, seenRefs),
+    ]),
+  );
+}
+
+function resolveLocalRef(document, ref) {
+  if (typeof ref !== "string" || !ref.startsWith("#/")) {
+    throw new GenerationError(`Only local OpenAPI references are supported for docs display: ${ref}`);
+  }
+
+  const segments = ref
+    .slice(2)
+    .split("/")
+    .map(decodeJsonPointerSegment);
+
+  let value = document;
+
+  for (const segment of segments) {
+    if (
+      value == null ||
+      !Object.prototype.hasOwnProperty.call(Object(value), segment)
+    ) {
+      throw new GenerationError(`Local OpenAPI reference not found: ${ref}`);
+    }
+
+    value = value[segment];
+  }
+
+  return value;
+}
+
+function slugify(value) {
+  const words = String(value || "")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return words || "section";
+}
+
+function uniqueSlug(slugs, value) {
+  return uniqueId(slugs, slugify(value));
+}
+
+function uniqueId(ids, value) {
+  const base = slugify(value);
+  let candidate = base;
+  let suffix = 2;
+
+  while (ids.has(candidate)) {
+    candidate = `${base}-${suffix}`;
+    suffix += 1;
+  }
+
+  ids.add(candidate);
+  return candidate;
+}
+
+function operationRouteId(method, pathName) {
+  return slugify(`${method} ${pathName.replace(/[{}]/g, " ")}`);
+}
+
+function decodeJsonPointerSegment(segment) {
+  return decodeURIComponent(segment).replace(/~1/g, "/").replace(/~0/g, "~");
+}
+
+function encodeJsonPointerSegment(segment) {
+  return String(segment).replace(/~/g, "~0").replace(/\//g, "~1");
+}
+
+function serializeJsonForScript(value) {
+  return JSON.stringify(value, null, 2)
+    .replace(/</g, "\\u003c")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function stringValue(value) {
+  return typeof value === "string" ? value : "";
+}
+
+function arrayValue(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function objectValue(value) {
+  return isPlainObject(value) ? value : {};
 }
 
 function escapeHtml(value) {
@@ -200,11 +662,23 @@ function escapeHtml(value) {
 
 function generate(cwd, argv) {
   const options = parseArgs(argv);
+
+  if (options.selfTest) {
+    runSelfTests();
+    return {
+      outDir: cwd,
+      files: [],
+      selfTest: true,
+    };
+  }
+
   const paths = resolvePaths(cwd, options);
 
   assertSpecExists(paths.specPath);
 
-  const spec = readSpec(paths.specPath);
+  const spec = loadSpec(paths.specPath);
+  assertOpenApiDocument(spec.document);
+
   const files = renderFiles(spec);
 
   prepareOutput(paths.outDir);
@@ -220,9 +694,13 @@ function main() {
   try {
     const result = generate(process.cwd(), process.argv.slice(2));
 
-    console.log(
-      `Generated API docs in ${path.relative(process.cwd(), result.outDir) || "."}`,
-    );
+    if (result.selfTest) {
+      console.log("Generator self-tests passed");
+    } else {
+      console.log(
+        `Generated API docs in ${path.relative(process.cwd(), result.outDir) || "."}`,
+      );
+    }
   } catch (error) {
     const prefix = error instanceof UsageError ? "Usage error" : "Generation error";
     console.error(`${prefix}: ${error.message}`);
@@ -230,4 +708,104 @@ function main() {
   }
 }
 
-main();
+function runSelfTests() {
+  const assert = require("node:assert/strict");
+  const slugs = new Set();
+  const localDocument = {
+    openapi: "3.0.2",
+    info: {
+      title: "Test API",
+      version: "1.0.0",
+    },
+    paths: {
+      "/machines/{machineSlug}": {
+        get: {
+          tags: ["Machine versions"],
+          parameters: [
+            {
+              name: "machineSlug",
+              in: "path",
+              schema: {
+                $ref: "#/components/schemas/MachineSlug",
+              },
+            },
+          ],
+          requestBody: {
+            $ref: "#/components/requestBodies/CreateMachine",
+          },
+          responses: {
+            "403": {
+              $ref: "#/components/responses/Forbidden",
+            },
+          },
+        },
+      },
+    },
+    components: {
+      requestBodies: {
+        CreateMachine: {
+          description: "Create a machine",
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/MachineSlug",
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        Forbidden: {
+          description: "Forbidden",
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/Error",
+              },
+            },
+          },
+        },
+      },
+      schemas: {
+        MachineSlug: {
+          type: "string",
+          description: "Machine slug",
+        },
+        Error: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+            },
+          },
+        },
+      },
+    },
+  };
+
+  assert.equal(slugify("Machine versions"), "machine-versions");
+  assert.equal(operationRouteId("get", "/machines/{machineSlug}"), "get-machines-machine-slug");
+  assert.equal(resolveLocalRef(localDocument, "#/components/schemas/MachineSlug").type, "string");
+  assert.equal(uniqueSlug(slugs, "Duplicate!! Tag"), "duplicate-tag");
+  assert.equal(uniqueSlug(slugs, "Duplicate Tag"), "duplicate-tag-2");
+
+  const operations = normalizeOperations(localDocument);
+  assert.equal(operations.length, 1);
+  assert.equal(operations[0].id, "get-machines-machine-slug");
+  assert.equal(operations[0].parameters[0].schema.description, "Machine slug");
+  assert.equal(operations[0].requestBody.description, "Create a machine");
+  assert.equal(operations[0].responses[0].description, "Forbidden");
+  assert.equal(
+    localDocument.paths["/machines/{machineSlug}"].get.requestBody.$ref,
+    "#/components/requestBodies/CreateMachine",
+  );
+
+  assert.throws(
+    () => assertOpenApiDocument({ openapi: "3.0.2", info: {} }),
+    /paths object/,
+  );
+}
+
+if (require.main === module) {
+  main();
+}
