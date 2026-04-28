@@ -325,6 +325,8 @@ body {
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
   text-transform: uppercase;
 }
 
@@ -344,6 +346,8 @@ body {
 
 a {
   color: var(--accent);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .source-links a,
@@ -559,16 +563,21 @@ a:focus-visible,
 .route-view {
   display: grid;
   gap: 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
 }
 
 .route-heading {
   display: grid;
   gap: 0.5rem;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
 }
 
 .route-heading h2 {
   font-size: 2.5rem;
   line-height: 1.1;
+  min-width: 0;
   overflow-wrap: anywhere;
 }
 
@@ -577,6 +586,12 @@ a:focus-visible,
   flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.operation-title h2 {
+  flex: 1 1 16rem;
 }
 
 .method-badge,
@@ -634,12 +649,14 @@ a:focus-visible,
   border: 1px solid var(--border-subtle);
   border-radius: 0.5rem;
   background: var(--panel);
+  min-width: 0;
   padding: 1rem;
 }
 
 .content-section {
   display: grid;
   gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .content-section > header,
@@ -652,6 +669,7 @@ a:focus-visible,
   align-items: baseline;
   justify-content: space-between;
   gap: 0.5rem;
+  min-width: 0;
 }
 
 .content-section h3,
@@ -674,6 +692,14 @@ a:focus-visible,
   margin-bottom: 0;
 }
 
+.markdown p,
+.schema-block p,
+.property-block p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .markdown pre,
 .json-block {
   overflow-x: auto;
@@ -694,7 +720,9 @@ code {
 }
 
 .path-text {
+  min-width: 0;
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .docs-list,
@@ -737,6 +765,7 @@ code {
 }
 
 .parameter-table-wrapper {
+  max-width: 100%;
   overflow-x: auto;
 }
 
@@ -763,6 +792,7 @@ code {
 .example-block {
   display: grid;
   gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .schema-children,
@@ -771,6 +801,8 @@ code {
 .examples-list {
   display: grid;
   gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
 }
 
 .schema-children {
@@ -856,7 +888,7 @@ code {
   .response-block,
   .media-block,
   .example-block {
-    padding: 0.875rem;
+    padding: 0.625rem;
   }
 }
 `;
