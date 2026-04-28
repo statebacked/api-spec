@@ -1,0 +1,233 @@
+#!/usr/bin/env node
+
+"use strict";
+
+const fs = require("node:fs");
+const path = require("node:path");
+const yaml = require("js-yaml");
+
+const DEFAULT_SPEC = "statebacked.openapi.v3.yaml";
+const DEFAULT_OUT = "docs";
+
+const GENERATED_FILES = Object.freeze([
+  "index.html",
+  "styles.css",
+  "app.js",
+  "openapi.yaml",
+  "openapi.json",
+  ".nojekyll",
+]);
+
+class UsageError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "UsageError";
+  }
+}
+
+function parseArgs(argv) {
+  const options = {
+    spec: DEFAULT_SPEC,
+    out: DEFAULT_OUT,
+  };
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+
+    if (arg === "--spec" || arg === "--out") {
+      const value = argv[index + 1];
+      if (!value || value.startsWith("--")) {
+        throw new UsageError(`Missing value for ${arg}`);
+      }
+
+      options[arg.slice(2)] = value;
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--")) {
+      throw new UsageError(`Unknown flag: ${arg}`);
+    }
+
+    throw new UsageError(`Unexpected argument: ${arg}`);
+  }
+
+  return options;
+}
+
+function resolvePaths(cwd, options) {
+  return {
+    specPath: path.resolve(cwd, options.spec),
+    outDir: path.resolve(cwd, options.out),
+  };
+}
+
+function assertSpecExists(specPath) {
+  let stat;
+
+  try {
+    stat = fs.statSync(specPath);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      throw new UsageError(`Spec file does not exist: ${specPath}`);
+    }
+
+    throw error;
+  }
+
+  if (!stat.isFile()) {
+    throw new UsageError(`Spec path is not a file: ${specPath}`);
+  }
+}
+
+function readSpec(specPath) {
+  const source = fs.readFileSync(specPath, "utf8");
+
+  return {
+    source,
+    document: yaml.load(source),
+  };
+}
+
+function prepareOutput(outDir) {
+  fs.mkdirSync(outDir, { recursive: true });
+
+  for (const fileName of GENERATED_FILES) {
+    fs.rmSync(path.join(outDir, fileName), {
+      force: true,
+      recursive: true,
+    });
+  }
+}
+
+function pageTitle(openApiDocument) {
+  return openApiDocument &&
+    typeof openApiDocument === "object" &&
+    openApiDocument.info &&
+    typeof openApiDocument.info.title === "string" &&
+    openApiDocument.info.title.trim()
+    ? openApiDocument.info.title.trim()
+    : "API Documentation";
+}
+
+function renderIndexHtml(openApiDocument) {
+  const title = escapeHtml(pageTitle(openApiDocument));
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${title}</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="docs-shell">
+    <h1>${title}</h1>
+    <p>Static API documentation generation is configured.</p>
+    <nav aria-label="Source files">
+      <a href="openapi.yaml">OpenAPI YAML</a>
+      <a href="openapi.json">OpenAPI JSON</a>
+    </nav>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
+`;
+}
+
+function renderStylesCss() {
+  return `:root {
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  background: Canvas;
+  color: CanvasText;
+}
+
+.docs-shell {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+}
+
+.docs-shell nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+`;
+}
+
+function renderAppJs() {
+  return `"use strict";
+
+document.documentElement.dataset.apiDocs = "generated";
+`;
+}
+
+function renderFiles(spec) {
+  return new Map([
+    ["index.html", renderIndexHtml(spec.document)],
+    ["styles.css", renderStylesCss()],
+    ["app.js", renderAppJs()],
+    ["openapi.yaml", normalizeGeneratedYaml(spec.source)],
+    ["openapi.json", `${JSON.stringify(spec.document, null, 2)}\n`],
+    [".nojekyll", ""],
+  ]);
+}
+
+function normalizeGeneratedYaml(source) {
+  return source.replace(/[ \t]+$/gm, "");
+}
+
+function writeFiles(outDir, files) {
+  for (const [fileName, content] of files) {
+    fs.writeFileSync(path.join(outDir, fileName), content, "utf8");
+  }
+}
+
+function escapeHtml(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function generate(cwd, argv) {
+  const options = parseArgs(argv);
+  const paths = resolvePaths(cwd, options);
+
+  assertSpecExists(paths.specPath);
+
+  const spec = readSpec(paths.specPath);
+  const files = renderFiles(spec);
+
+  prepareOutput(paths.outDir);
+  writeFiles(paths.outDir, files);
+
+  return {
+    outDir: paths.outDir,
+    files: Array.from(files.keys()),
+  };
+}
+
+function main() {
+  try {
+    const result = generate(process.cwd(), process.argv.slice(2));
+
+    console.log(
+      `Generated API docs in ${path.relative(process.cwd(), result.outDir) || "."}`,
+    );
+  } catch (error) {
+    const prefix = error instanceof UsageError ? "Usage error" : "Generation error";
+    console.error(`${prefix}: ${error.message}`);
+    process.exitCode = 1;
+  }
+}
+
+main();
