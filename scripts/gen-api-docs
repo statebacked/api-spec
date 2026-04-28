@@ -7,7 +7,7 @@ const path = require("node:path");
 const yaml = require("js-yaml");
 
 const DEFAULT_SPEC = "statebacked.openapi.v3.yaml";
-const DEFAULT_OUT = "docs";
+const DEFAULT_OUT = "public";
 const HTTP_METHODS = Object.freeze([
   "get",
   "put",

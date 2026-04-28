@@ -9,7 +9,7 @@ const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
 
-const DOCS_DIR = path.resolve(process.cwd(), "docs");
+const DOCS_DIR = path.resolve(process.cwd(), "public");
 const LOCAL_LIBRARY_PACKAGES = Object.freeze([
   "libatk1.0-0",
   "libatk-bridge2.0-0",

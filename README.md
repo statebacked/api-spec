@@ -13,7 +13,7 @@ npm ci
 npm run gen-api-docs
 ```
 
-The generated GitHub Pages site is written to `docs/`.
+The generated GitHub Pages site is written to `public/`.
 
 And documentation for the State Backed service at [https://docs.statebacked.dev](https://docs.statebacked.dev).
 
