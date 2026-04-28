@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "bump": "bump"
+    "bump": "bump",
+    "gen-api-docs": "scripts/gen-api-docs"
   },
   "repository": {
     "type": "git",
@@ -18,6 +19,7 @@
   },
   "homepage": "https://github.com/statebacked/api-spec#readme",
   "devDependencies": {
-    "bump-cli": "^2.7.0"
+    "bump-cli": "^2.7.0",
+    "js-yaml": "^4.1.0"
   }
 }
