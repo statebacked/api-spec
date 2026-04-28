@@ -690,6 +690,7 @@ pre,
 
 code {
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .path-text {
@@ -742,6 +743,7 @@ code {
 .parameter-table th,
 .parameter-table td {
   border-bottom: 1px solid var(--border-subtle);
+  overflow-wrap: anywhere;
   padding: 0.625rem;
   text-align: left;
   vertical-align: top;
@@ -2880,6 +2882,7 @@ function runSelfTests() {
   assert.match(stylesCss, /@media \(max-width: 900px\)/);
   assert.match(stylesCss, /@media \(max-width: 520px\)/);
   assert.match(stylesCss, /overflow-wrap: anywhere/);
+  assert.match(stylesCss, /word-break: break-word/);
   assert.match(stylesCss, /\.parameter-table-wrapper[\s\S]*overflow-x: auto/);
   assert.doesNotMatch(stylesCss, /font-size:\s*clamp\([^;]*vw/i);
   assert.doesNotMatch(stylesCss, /font-size:[^;]*vw/i);
