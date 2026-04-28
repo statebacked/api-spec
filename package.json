@@ -19,7 +19,7 @@
   },
   "homepage": "https://github.com/statebacked/api-spec#readme",
   "devDependencies": {
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.1.1",
     "playwright": "^1.59.1"
   }
 }

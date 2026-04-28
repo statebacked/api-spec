@@ -252,7 +252,7 @@ function contentType(filePath) {
 
 async function verifyDocsSite(browser, baseUrl, docsData) {
   for (const width of VIEWPORTS) {
-    await withCheckedPage(browser, width, async (page, failures) => {
+    await withCheckedPage(browser, width, baseUrl, async (page, failures) => {
       await page.goto(baseUrl, { waitUntil: "networkidle" });
       await assertResponsiveLayout(page, `overview at ${width}px`);
 
@@ -260,8 +260,11 @@ async function verifyDocsSite(browser, baseUrl, docsData) {
         await assertSearch(page, query);
       }
 
-      await assertDirectRoute(page, "#/operations/get-billing", /Billing/i, "#/operations/get-billing");
-      await assertDirectRoute(page, "#/schemas/MachineSlug", /MachineSlug/i, "#/schemas/MachineSlug");
+      for (const route of smokeRoutes(docsData)) {
+        await assertDirectRoute(page, route.hash, route.textPattern, route.hash);
+      }
+
+      await assertSourceDownloads(page);
       await assertResponsiveLayout(page, `schema route at ${width}px`);
 
       const longestOperation = docsData.operations.reduce((selected, operation) =>
@@ -285,12 +288,13 @@ async function verifyDocsSite(browser, baseUrl, docsData) {
   }
 }
 
-async function withCheckedPage(browser, width, verify) {
+async function withCheckedPage(browser, width, baseUrl, verify) {
   const context = await browser.newContext({
     viewport: { width, height: 1000 },
   });
   const page = await context.newPage();
   const failures = [];
+  const allowedOrigin = new URL(baseUrl).origin;
 
   page.on("console", (message) => {
     if (message.type() === "error") {
@@ -300,12 +304,72 @@ async function withCheckedPage(browser, width, verify) {
   page.on("pageerror", (error) => {
     failures.push(`page error: ${error.message}`);
   });
+  page.on("request", (request) => {
+    const requestUrl = new URL(request.url());
+    if (requestUrl.origin !== allowedOrigin) {
+      failures.push(`unexpected network request: ${request.method()} ${request.url()}`);
+    }
+  });
 
   try {
     await verify(page, failures);
   } finally {
     await context.close();
   }
+}
+
+function smokeRoutes(docsData) {
+  const topic = requiredItem(
+    docsData.topics.find((item) => item.slug === "authentication") || docsData.topics[0],
+    "topic route",
+  );
+  const tag = requiredItem(
+    docsData.tags.find((item) => item.slug === "machines") || docsData.tags[0],
+    "tag route",
+  );
+  const getOperation = requiredItem(
+    docsData.operations.find((item) => item.id === "get-machines") ||
+      docsData.operations.find((item) => item.method === "get"),
+    "GET operation route",
+  );
+  const writeOperation = requiredItem(
+    docsData.operations.find((item) => item.id === "post-machines") ||
+      docsData.operations.find((item) => item.method === "post" || item.method === "put"),
+    "POST or PUT operation route",
+  );
+  const schema = requiredItem(
+    docsData.components.schemas.find((item) => item.name === "MachineSlug") ||
+      docsData.components.schemas[0],
+    "schema route",
+  );
+
+  return [
+    { hash: "#/", textPattern: /State Backed API/i },
+    { hash: `#/topics/${encodeURIComponent(topic.slug)}`, textPattern: textPattern(topic.title) },
+    { hash: `#/tags/${encodeURIComponent(tag.slug)}`, textPattern: textPattern(tag.name) },
+    {
+      hash: `#/operations/${encodeURIComponent(getOperation.id)}`,
+      textPattern: textPattern(getOperation.summary || getOperation.path),
+    },
+    {
+      hash: `#/operations/${encodeURIComponent(writeOperation.id)}`,
+      textPattern: textPattern(writeOperation.summary || writeOperation.path),
+    },
+    { hash: `#/schemas/${encodeURIComponent(schema.name)}`, textPattern: textPattern(schema.name) },
+  ];
+}
+
+function requiredItem(item, label) {
+  assert.ok(item, `Expected docs data to include a ${label}`);
+  return item;
+}
+
+function textPattern(value) {
+  return new RegExp(escapeRegExp(String(value)), "i");
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 async function assertSearch(page, query) {
@@ -343,6 +407,15 @@ async function assertDirectRoute(page, hash, textPattern, activeHref) {
 
   const active = await page.getAttribute("#docs-navigation a[aria-current='page']", "href");
   assert.equal(active, activeHref, `Expected ${hash} active nav state`);
+}
+
+async function assertSourceDownloads(page) {
+  await page.goto(`${page.url().split("#")[0]}#/`, { waitUntil: "networkidle" });
+
+  for (const sourcePath of ["openapi.yaml", "openapi.json"]) {
+    const link = page.locator(`#docs-content a[href='${sourcePath}'][download]`);
+    assert.equal(await link.count(), 1, `Expected overview download link for ${sourcePath}`);
+  }
 }
 
 async function assertThemePersistence(page) {

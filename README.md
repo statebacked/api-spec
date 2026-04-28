@@ -4,7 +4,16 @@ OpenAPI specification for the StateBacked.dev XState backend as a service
 
 # Docs
 
-Check out the API docs at [api-docs.statebacked.dev](api-docs.statebacked.dev).
+Check out the API docs at [https://api-docs.statebacked.dev](https://api-docs.statebacked.dev).
+
+Generate the static API docs locally with:
+
+```sh
+npm ci
+npm run gen-api-docs
+```
+
+The generated GitHub Pages site is written to `docs/`.
 
 And documentation for the State Backed service at [https://docs.statebacked.dev](https://docs.statebacked.dev).
 
