@@ -760,8 +760,9 @@ code {
 }
 
 .parameter-table {
-  width: 100%;
   border-collapse: collapse;
+  min-width: 42rem;
+  width: 100%;
 }
 
 .parameter-table-wrapper {
@@ -772,7 +773,7 @@ code {
 .parameter-table th,
 .parameter-table td {
   border-bottom: 1px solid var(--border-subtle);
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
   padding: 0.625rem;
   text-align: left;
   vertical-align: top;
@@ -783,6 +784,27 @@ code {
   font-size: 0.8125rem;
   letter-spacing: 0;
   text-transform: uppercase;
+}
+
+.parameter-table th:nth-child(1),
+.parameter-table td:nth-child(1) {
+  min-width: 7rem;
+}
+
+.parameter-table th:nth-child(2),
+.parameter-table td:nth-child(2) {
+  min-width: 5rem;
+}
+
+.parameter-table th:nth-child(3),
+.parameter-table td:nth-child(3) {
+  min-width: 6rem;
+}
+
+.parameter-table th:nth-child(4),
+.parameter-table td:nth-child(4) {
+  min-width: 18rem;
+  overflow-wrap: anywhere;
 }
 
 .schema-block,
@@ -889,6 +911,64 @@ code {
   .media-block,
   .example-block {
     padding: 0.625rem;
+  }
+
+  .parameter-table-wrapper {
+    overflow-x: visible;
+  }
+
+  .parameter-table {
+    min-width: 0;
+  }
+
+  .parameter-table,
+  .parameter-table tbody,
+  .parameter-table tr,
+  .parameter-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .parameter-table thead {
+    display: none;
+  }
+
+  .parameter-table tr {
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 0.75rem 0;
+  }
+
+  .parameter-table td {
+    border-bottom: 0;
+    display: grid;
+    gap: 0.25rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    padding: 0.35rem 0;
+  }
+
+  .parameter-table td::before {
+    color: var(--text-muted);
+    content: "";
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .parameter-table td:nth-child(1)::before {
+    content: "Name";
+  }
+
+  .parameter-table td:nth-child(2)::before {
+    content: "In";
+  }
+
+  .parameter-table td:nth-child(3)::before {
+    content: "Required";
+  }
+
+  .parameter-table td:nth-child(4)::before {
+    content: "Details";
   }
 }
 `;
