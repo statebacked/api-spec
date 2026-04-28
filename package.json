@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "scripts/gen-api-docs --self-test",
+    "test:browser": "scripts/verify-docs-browser",
     "bump": "bump",
     "gen-api-docs": "scripts/gen-api-docs"
   },
@@ -20,6 +21,7 @@
   "homepage": "https://github.com/statebacked/api-spec#readme",
   "devDependencies": {
     "bump-cli": "^2.7.0",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "playwright": "^1.59.1"
   }
 }

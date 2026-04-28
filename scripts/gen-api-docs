@@ -1025,9 +1025,13 @@ function indexBy(items, key) {
 }
 
 function buildSearchIndex(data) {
+  const operationsById = indexBy(data.operations, "id");
+
   return []
     .concat(arrayValue(data.topics).map(indexTopic))
-    .concat(arrayValue(data.tags).map(indexTag))
+    .concat(arrayValue(data.tags).map(function (tag) {
+      return indexTag(tag, operationsById);
+    }))
     .concat(arrayValue(data.operations).map(indexOperation))
     .concat(arrayValue(data.components.schemas).map(indexSchema))
     .map(function (entry) {
@@ -1047,9 +1051,9 @@ function indexTopic(topic) {
   };
 }
 
-function indexTag(tag) {
+function indexTag(tag, operationsById) {
   const operations = arrayValue(tag.operationIds).map(function (operationId) {
-    return docsIndex.operationsById[operationId];
+    return operationsById[operationId];
   }).filter(Boolean);
 
   return {

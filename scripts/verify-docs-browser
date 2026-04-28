@@ -1,0 +1,338 @@
+#!/usr/bin/env node
+
+"use strict";
+
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const http = require("node:http");
+const path = require("node:path");
+
+const DOCS_DIR = path.resolve(process.cwd(), "docs");
+const VIEWPORTS = Object.freeze([390, 768, 1440]);
+const SEARCH_QUERIES = Object.freeze([
+  "machines",
+  "token",
+  "logs",
+  "websocket",
+  "machineSlug",
+  "billing",
+]);
+
+async function main() {
+  const { chromium } = requirePlaywright();
+  const docsData = readDocsData();
+  const server = await serveStaticDocs(DOCS_DIR);
+  const baseUrl = `http://127.0.0.1:${server.address().port}/`;
+  const browser = await chromium.launch();
+
+  try {
+    await verifyDocsSite(browser, baseUrl, docsData);
+  } finally {
+    await browser.close();
+    await new Promise((resolve) => server.close(resolve));
+  }
+
+  console.log("Browser docs checks passed");
+}
+
+function requirePlaywright() {
+  try {
+    return require("playwright");
+  } catch (error) {
+    throw new Error("Browser docs checks require the playwright dev dependency. Run npm install first.");
+  }
+}
+
+function readDocsData() {
+  return JSON.parse(fs.readFileSync(path.join(DOCS_DIR, "api-docs.json"), "utf8"));
+}
+
+async function serveStaticDocs(rootDir) {
+  const server = http.createServer((request, response) => {
+    const requestUrl = new URL(request.url, "http://127.0.0.1");
+    const relativePath = decodeURIComponent(requestUrl.pathname === "/" ? "/index.html" : requestUrl.pathname);
+    const filePath = path.resolve(rootDir, `.${relativePath}`);
+
+    if (!filePath.startsWith(`${rootDir}${path.sep}`)) {
+      response.writeHead(403).end("Forbidden");
+      return;
+    }
+
+    fs.readFile(filePath, (error, content) => {
+      if (error) {
+        response.writeHead(error.code === "ENOENT" ? 404 : 500).end("Not found");
+        return;
+      }
+
+      response.writeHead(200, { "content-type": contentType(filePath) });
+      response.end(content);
+    });
+  });
+
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  return server;
+}
+
+function contentType(filePath) {
+  if (filePath.endsWith(".html")) {
+    return "text/html; charset=utf-8";
+  }
+
+  if (filePath.endsWith(".css")) {
+    return "text/css; charset=utf-8";
+  }
+
+  if (filePath.endsWith(".js")) {
+    return "text/javascript; charset=utf-8";
+  }
+
+  if (filePath.endsWith(".json")) {
+    return "application/json; charset=utf-8";
+  }
+
+  if (filePath.endsWith(".yaml") || filePath.endsWith(".yml")) {
+    return "application/yaml; charset=utf-8";
+  }
+
+  return "application/octet-stream";
+}
+
+async function verifyDocsSite(browser, baseUrl, docsData) {
+  for (const width of VIEWPORTS) {
+    await withCheckedPage(browser, width, async (page, failures) => {
+      await page.goto(baseUrl, { waitUntil: "networkidle" });
+      await assertResponsiveLayout(page, `overview at ${width}px`);
+
+      for (const query of SEARCH_QUERIES) {
+        await assertSearch(page, query);
+      }
+
+      await assertDirectRoute(page, "#/operations/get-billing", /Billing/i, "#/operations/get-billing");
+      await assertDirectRoute(page, "#/schemas/MachineSlug", /MachineSlug/i, "#/schemas/MachineSlug");
+      await assertResponsiveLayout(page, `schema route at ${width}px`);
+
+      const longestOperation = docsData.operations.reduce((selected, operation) =>
+        operation.path.length > selected.path.length ? operation : selected,
+      );
+      await page.goto(`${baseUrl}#/operations/${encodeURIComponent(longestOperation.id)}`, {
+        waitUntil: "networkidle",
+      });
+      await assertResponsiveLayout(page, `long operation route at ${width}px`);
+
+      if (width === 390) {
+        await assertMobileNavigation(page);
+      }
+
+      if (width === 1440) {
+        await assertThemePersistence(page);
+      }
+
+      assert.deepEqual(failures, [], `Browser console/page errors at ${width}px`);
+    });
+  }
+}
+
+async function withCheckedPage(browser, width, verify) {
+  const context = await browser.newContext({
+    viewport: { width, height: 1000 },
+  });
+  const page = await context.newPage();
+  const failures = [];
+
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      failures.push(`console error: ${message.text()}`);
+    }
+  });
+  page.on("pageerror", (error) => {
+    failures.push(`page error: ${error.message}`);
+  });
+
+  try {
+    await verify(page, failures);
+  } finally {
+    await context.close();
+  }
+}
+
+async function assertSearch(page, query) {
+  if (!(await page.locator("#docs-search").isVisible())) {
+    await page.click("#nav-toggle");
+    await page.waitForSelector("#docs-sidebar[data-open='true']");
+  }
+
+  await page.fill("#docs-search", query);
+  await page.waitForSelector("#search-results[data-active='true']");
+
+  const results = await page.$$eval("#search-results a", (links) =>
+    links.map((link) => ({
+      href: link.getAttribute("href") || "",
+      text: link.textContent || "",
+    })),
+  );
+
+  assert.ok(results.length > 0, `Expected search results for ${query}`);
+  assert.ok(
+    results.every((result) => result.href.startsWith("#/")),
+    `Expected search results for ${query} to link to docs routes`,
+  );
+
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => !document.querySelector("#search-results[data-active='true']"));
+}
+
+async function assertDirectRoute(page, hash, textPattern, activeHref) {
+  await page.goto(`${page.url().split("#")[0]}${hash}`, { waitUntil: "networkidle" });
+  await page.waitForSelector("#docs-content .route-view");
+
+  const contentText = await page.locator("#docs-content").innerText();
+  assert.match(contentText, textPattern, `Expected ${hash} to render matching content`);
+
+  const active = await page.getAttribute("#docs-navigation a[aria-current='page']", "href");
+  assert.equal(active, activeHref, `Expected ${hash} active nav state`);
+}
+
+async function assertThemePersistence(page) {
+  await page.goto(`${page.url().split("#")[0]}#/`, { waitUntil: "networkidle" });
+  await page.evaluate(() => localStorage.removeItem("api-docs-theme"));
+  await page.reload({ waitUntil: "networkidle" });
+  await page.click("#theme-toggle");
+
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), "dark");
+  assert.equal(await page.evaluate(() => localStorage.getItem("api-docs-theme")), "dark");
+
+  await page.reload({ waitUntil: "networkidle" });
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), "dark");
+  assert.equal(await page.getAttribute("#theme-toggle", "aria-pressed"), "true");
+}
+
+async function assertMobileNavigation(page) {
+  await page.goto(`${page.url().split("#")[0]}#/`, { waitUntil: "networkidle" });
+  assert.equal(await page.getAttribute("#docs-sidebar", "data-open"), "false");
+  assert.equal(await page.getAttribute("#nav-toggle", "aria-expanded"), "false");
+
+  await page.click("#nav-toggle");
+  assert.equal(await page.getAttribute("#docs-sidebar", "data-open"), "true");
+  assert.equal(await page.getAttribute("#nav-toggle", "aria-expanded"), "true");
+
+  await page.click("#docs-navigation a[href='#/schemas']");
+  assert.equal(await page.getAttribute("#docs-sidebar", "data-open"), "false");
+}
+
+async function assertResponsiveLayout(page, label) {
+  const problems = await page.evaluate(() => {
+    const layoutProblems = [];
+    const viewportWidth = document.documentElement.clientWidth;
+
+    if (document.documentElement.scrollWidth > viewportWidth + 1) {
+      layoutProblems.push(
+        `document overflows horizontally: ${document.documentElement.scrollWidth}px > ${viewportWidth}px`,
+      );
+    }
+
+    for (const element of visibleElements()) {
+      const rect = element.getBoundingClientRect();
+      if (rect.width > 0 && (rect.left < -1 || rect.right > viewportWidth + 1)) {
+        const style = window.getComputedStyle(element);
+        if (style.overflowX !== "auto" && style.overflowX !== "scroll") {
+          layoutProblems.push(`${elementLabel(element)} extends outside the viewport`);
+        }
+      }
+
+      if (element.scrollWidth > element.clientWidth + 1) {
+        const style = window.getComputedStyle(element);
+        if (style.overflowX !== "auto" && style.overflowX !== "scroll") {
+          layoutProblems.push(`${elementLabel(element)} has clipped horizontal content`);
+        }
+      }
+    }
+
+    for (const selector of overlapParentSelectors()) {
+      for (const parent of document.querySelectorAll(selector)) {
+        const children = Array.from(parent.children).filter(isVisible);
+        for (let leftIndex = 0; leftIndex < children.length; leftIndex += 1) {
+          for (let rightIndex = leftIndex + 1; rightIndex < children.length; rightIndex += 1) {
+            if (rectsOverlap(children[leftIndex].getBoundingClientRect(), children[rightIndex].getBoundingClientRect())) {
+              layoutProblems.push(
+                `${elementLabel(children[leftIndex])} overlaps ${elementLabel(children[rightIndex])}`,
+              );
+            }
+          }
+        }
+      }
+    }
+
+    return layoutProblems;
+
+    function visibleElements() {
+      return Array.from(document.querySelectorAll([
+        ".docs-shell",
+        ".docs-header",
+        ".header-actions",
+        ".source-links",
+        ".icon-button",
+        ".docs-layout",
+        ".docs-sidebar",
+        ".docs-content",
+        ".route-heading",
+        ".operation-title",
+        ".path-text",
+        ".content-section",
+        ".schema-block",
+        ".property-block",
+        ".response-block",
+        ".media-block",
+        ".example-block",
+        ".parameter-table-wrapper",
+        ".nav-section",
+        ".nav-link",
+        ".search-result",
+        "pre",
+        "code",
+      ].join(","))).filter(isVisible);
+    }
+
+    function overlapParentSelectors() {
+      return [
+        ".docs-header",
+        ".header-actions",
+        ".source-links",
+        ".operation-title",
+        ".content-section > header",
+        ".schema-block > header",
+        ".property-block > header",
+        ".response-block > header",
+        ".media-block > header",
+        ".nav-link",
+        ".search-result",
+      ];
+    }
+
+    function isVisible(element) {
+      const style = window.getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+    }
+
+    function rectsOverlap(left, right) {
+      const horizontal = Math.max(0, Math.min(left.right, right.right) - Math.max(left.left, right.left));
+      const vertical = Math.max(0, Math.min(left.bottom, right.bottom) - Math.max(left.top, right.top));
+      return horizontal > 1 && vertical > 1;
+    }
+
+    function elementLabel(element) {
+      const id = element.id ? `#${element.id}` : "";
+      const className = typeof element.className === "string" && element.className
+        ? `.${element.className.trim().replace(/\s+/g, ".")}`
+        : "";
+      return `${element.tagName.toLowerCase()}${id}${className}`;
+    }
+  });
+
+  assert.deepEqual(problems, [], `Responsive layout problems for ${label}`);
+}
+
+main().catch((error) => {
+  console.error(error.stack || error.message);
+  process.exitCode = 1;
+});
