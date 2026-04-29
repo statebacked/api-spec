@@ -1106,6 +1106,7 @@ function operationSearchText(operation) {
         parameter.name,
         parameter.in,
         parameter.description,
+        examplesSearchText(parameter.examples),
         schemaSearchText(parameter.schema),
       ].join(" ");
     }).join(" "),
@@ -1113,7 +1114,7 @@ function operationSearchText(operation) {
       ? [
           operation.requestBody.description,
           arrayValue(operation.requestBody.content).map(function (media) {
-            return [media.mediaType, schemaSearchText(media.schema)].join(" ");
+            return [media.mediaType, examplesSearchText(media.examples), schemaSearchText(media.schema)].join(" ");
           }).join(" "),
         ].join(" ")
       : "",
@@ -1122,11 +1123,23 @@ function operationSearchText(operation) {
         response.status,
         response.description,
         arrayValue(response.content).map(function (media) {
-          return [media.mediaType, schemaSearchText(media.schema)].join(" ");
+          return [media.mediaType, examplesSearchText(media.examples), schemaSearchText(media.schema)].join(" ");
         }).join(" "),
       ].join(" ");
     }).join(" "),
   ].join(" ");
+}
+
+function examplesSearchText(examples) {
+  return arrayValue(examples).map(function (example) {
+    return [
+      example.name,
+      example.summary,
+      example.description,
+      example.externalValue,
+      Object.prototype.hasOwnProperty.call(Object(example), "value") ? schemaSearchText(example.value) : "",
+    ].join(" ");
+  }).join(" ");
 }
 
 function schemaSearchText(value, seen) {
@@ -1738,7 +1751,7 @@ function renderParameters(parameters) {
       '<td><code>' + escapeHtml(parameter.name) + '</code></td>',
       '<td>' + escapeHtml(parameter.in) + '</td>',
       '<td>' + (parameter.required ? '<span class="required-badge">required</span>' : '<span class="muted">optional</span>') + (parameter.deprecated ? ' <span class="deprecated-badge">deprecated</span>' : "") + '</td>',
-      '<td>' + renderSchemaSummary(parameter.schema) + renderMarkdown(parameter.description) + renderExamples(parameter) + '</td>',
+      '<td>' + renderSchemaSummary(parameter.schema) + renderMarkdown(parameter.description) + renderExamples(parameter.examples) + '</td>',
       '</tr>',
     ].join("");
   }).join("");
@@ -1826,7 +1839,7 @@ function renderMediaList(content, idPrefix) {
       '<section id="' + escapeHtml(id) + '" class="media-block" aria-labelledby="' + escapeHtml(id) + '-title">',
       '<header><h4 id="' + escapeHtml(id) + '-title">' + escapeHtml(media.mediaType || "media") + '</h4></header>',
       renderSchema(media.schema, { id: id + "-schema", path: id, depth: 0 }),
-      renderExamples(media),
+      renderExamples(media.examples),
       '</section>',
     ].join("");
   }).join("");
@@ -1854,7 +1867,7 @@ function renderSchema(schema, context) {
     schema.$ref ? '<p>' + renderRefLink(schema.$ref) + '</p>' : "",
     renderMarkdown(schema.description),
     renderSchemaFacts(schema),
-    renderExamples(schema),
+    renderExamples(schema.examples),
   ];
 
   if (schema.circular) {
@@ -1916,7 +1929,7 @@ function renderSchemaFacts(schema) {
     }).join(", ") + '</li>');
   }
 
-  for (const key of ["const", "default", "example", "pattern", "minimum", "maximum", "minLength", "maxLength", "minItems", "maxItems"]) {
+  for (const key of ["const", "default", "pattern", "minimum", "maximum", "minLength", "maxLength", "minItems", "maxItems"]) {
     if (Object.prototype.hasOwnProperty.call(schema, key)) {
       facts.push('<li><strong>' + escapeHtml(key) + ':</strong> <code>' + escapeHtml(formatJson(schema[key])) + '</code></li>');
     }
@@ -2038,32 +2051,23 @@ function renderSchemaSummary(schema) {
   ].join("");
 }
 
-function renderExamples(source) {
-  const blocks = [];
-
-  if (source && Object.prototype.hasOwnProperty.call(source, "example")) {
-    blocks.push(renderExampleBlock("Example", source.example));
-  }
-
-  if (source && isPlainObject(source.examples)) {
-    for (const name of Object.keys(source.examples)) {
-      const example = source.examples[name];
-      const value = isPlainObject(example) && Object.prototype.hasOwnProperty.call(example, "value")
-        ? example.value
-        : example;
-      const title = isPlainObject(example) && example.summary ? example.summary : name;
-      blocks.push(renderExampleBlock(title, value));
-    }
-  }
-
-  return blocks.length ? '<div class="examples-list">' + blocks.join("") + '</div>' : "";
+function renderExamples(examples) {
+  const blocks = arrayValue(examples).map(renderExampleBlock).join("");
+  return blocks ? '<div class="examples-list">' + blocks + '</div>' : "";
 }
 
-function renderExampleBlock(title, value) {
+function renderExampleBlock(example) {
+  const hasValue = example && Object.prototype.hasOwnProperty.call(example, "value");
+  const externalValue = example && example.externalValue
+    ? '<p><a href="' + safeUrl(example.externalValue) + '">' + escapeHtml(example.externalValue) + '</a></p>'
+    : "";
+
   return [
     '<section class="example-block">',
-    '<header><h4>' + escapeHtml(title) + '</h4></header>',
-    '<pre class="json-block"><code>' + escapeHtml(formatJson(value)) + '</code></pre>',
+    '<header><h4>' + escapeHtml(example && (example.summary || example.name) || "Example") + '</h4></header>',
+    example && example.ref ? '<p>' + renderRefLink(example.ref) + '</p>' : "",
+    example && example.description ? renderMarkdown(example.description) : "",
+    hasValue ? '<pre class="json-block"><code>' + escapeHtml(formatJson(example.value)) + '</code></pre>' : externalValue,
     '</section>',
   ].join("");
 }
@@ -2513,7 +2517,10 @@ function normalizeComponentMap(componentMap, normalize) {
 
 function normalizeComponentSchema(document, name, schema) {
   const ref = `#/components/schemas/${encodeJsonPointerSegment(name)}`;
-  const shape = resolveDisplayValue(document, schema, new Set([ref]));
+  const shape = normalizeSchemaExamples(
+    document,
+    resolveDisplayValue(document, schema, new Set([ref])),
+  );
 
   return {
     name,
@@ -2536,10 +2543,7 @@ function normalizeParameter(document, parameter) {
     required: Boolean(resolved && resolved.required),
     deprecated: Boolean(resolved && resolved.deprecated),
     schema: normalizeSchemaForDisplay(document, resolved && resolved.schema),
-    examples: objectValue(resolved && resolved.examples),
-    example: resolved && Object.prototype.hasOwnProperty.call(resolved, "example")
-      ? resolved.example
-      : undefined,
+    examples: normalizeExamples(document, resolved),
   };
 }
 
@@ -2592,16 +2596,114 @@ function normalizeContent(document, content) {
   return Object.entries(content).map(([mediaType, media]) => ({
     mediaType,
     schema: normalizeSchemaForDisplay(document, media && media.schema),
-    examples: objectValue(media && media.examples),
-    example: media && Object.prototype.hasOwnProperty.call(media, "example")
-      ? media.example
-      : undefined,
+    examples: normalizeExamples(document, media),
     encoding: objectValue(media && media.encoding),
   }));
 }
 
 function normalizeSchemaForDisplay(document, schema) {
-  return schema ? resolveDisplayValue(document, schema) : null;
+  return schema ? normalizeSchemaExamples(document, resolveDisplayValue(document, schema)) : null;
+}
+
+function normalizeSchemaExamples(document, value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeSchemaExamples(document, item));
+  }
+
+  if (!isPlainObject(value)) {
+    return value;
+  }
+
+  const normalized = {};
+
+  for (const [key, nested] of Object.entries(value)) {
+    if (key !== "example" && key !== "examples") {
+      normalized[key] = normalizeSchemaExamples(document, nested);
+    }
+  }
+
+  const examples = normalizeExamples(document, value);
+
+  if (examples.length) {
+    normalized.examples = examples;
+  }
+
+  return normalized;
+}
+
+function normalizeExamples(document, source) {
+  if (!isPlainObject(source)) {
+    return [];
+  }
+
+  const examples = [];
+
+  if (Object.prototype.hasOwnProperty.call(source, "example")) {
+    examples.push(normalizeInlineExample("Example", source.example));
+  }
+
+  if (Array.isArray(source.examples)) {
+    source.examples.forEach((example, index) => {
+      examples.push(normalizeInlineExample(`Example ${index + 1}`, example));
+    });
+  } else if (isPlainObject(source.examples)) {
+    for (const [name, example] of Object.entries(source.examples)) {
+      examples.push(normalizeNamedExample(document, name, example));
+    }
+  }
+
+  return examples;
+}
+
+function normalizeInlineExample(name, value) {
+  return {
+    name,
+    summary: name,
+    description: "",
+    value,
+    externalValue: "",
+    ref: "",
+  };
+}
+
+function normalizeNamedExample(document, name, example) {
+  const resolved = isPlainObject(example) && typeof example.$ref === "string"
+    ? resolveDisplayValue(document, example)
+    : example;
+  const ref = isPlainObject(example) && typeof example.$ref === "string" ? example.$ref : "";
+
+  if (
+    isPlainObject(resolved) &&
+    (
+      Object.prototype.hasOwnProperty.call(resolved, "value") ||
+      Object.prototype.hasOwnProperty.call(resolved, "externalValue") ||
+      Object.prototype.hasOwnProperty.call(resolved, "summary") ||
+      Object.prototype.hasOwnProperty.call(resolved, "description")
+    )
+  ) {
+    const normalized = {
+      name,
+      summary: stringValue(resolved.summary) || stringValue(name) || "Example",
+      description: stringValue(resolved.description),
+      externalValue: stringValue(resolved.externalValue),
+      ref: stringValue(ref || resolved.$ref),
+    };
+
+    if (Object.prototype.hasOwnProperty.call(resolved, "value")) {
+      normalized.value = resolved.value;
+    }
+
+    return normalized;
+  }
+
+  return {
+    name,
+    summary: stringValue(name) || "Example",
+    description: "",
+    value: resolved,
+    externalValue: "",
+    ref: stringValue(ref),
+  };
 }
 
 function resolveDisplayValue(document, value, seenRefs = new Set()) {
@@ -2838,6 +2940,7 @@ function runSelfTests() {
               schema: {
                 $ref: "#/components/schemas/MachineSlug",
               },
+              example: "example-machine",
             },
           ],
           requestBody: {
@@ -2901,6 +3004,13 @@ function runSelfTests() {
               schema: {
                 $ref: "#/components/schemas/MachineSlug",
               },
+              examples: {
+                createMachine: {
+                  summary: "Create machine request",
+                  description: "A machine slug request body.",
+                  value: "created-machine",
+                },
+              },
             },
           },
         },
@@ -2913,7 +3023,21 @@ function runSelfTests() {
               schema: {
                 $ref: "#/components/schemas/Error",
               },
+              examples: {
+                forbidden: {
+                  $ref: "#/components/examples/ForbiddenResponse",
+                },
+              },
             },
+          },
+        },
+      },
+      examples: {
+        ForbiddenResponse: {
+          summary: "Forbidden response",
+          description: "Returned when credentials are missing or invalid.",
+          value: {
+            message: "Forbidden",
           },
         },
       },
@@ -2921,6 +3045,7 @@ function runSelfTests() {
         MachineSlug: {
           type: "string",
           description: "Machine slug",
+          example: "schema-machine",
         },
         Error: {
           type: "object",
@@ -2935,6 +3060,18 @@ function runSelfTests() {
         BillingAccount: {
           type: "object",
           description: "Billing account details",
+          examples: {
+            Active: {
+              summary: "Active billing account",
+              value: {
+                status: "active",
+              },
+            },
+            External: {
+              summary: "External billing example",
+              externalValue: "https://example.com/billing-account.json",
+            },
+          },
           properties: {
             status: {
               type: "string",
@@ -2977,8 +3114,11 @@ function runSelfTests() {
   assert.equal(operations[1].id, "get-machines-machine-slug-logs");
   assert.equal(operations[2].id, "get-billing");
   assert.equal(operations[0].parameters[0].schema.description, "Machine slug");
+  assert.equal(operations[0].parameters[0].examples[0].value, "example-machine");
   assert.equal(operations[0].requestBody.description, "Create a machine");
+  assert.equal(operations[0].requestBody.content[0].examples[0].summary, "Create machine request");
   assert.equal(operations[0].responses[0].description, "Forbidden");
+  assert.equal(operations[0].responses[0].content[0].examples[0].ref, "#/components/examples/ForbiddenResponse");
   assert.equal(
     localDocument.paths["/machines/{machineSlug}"].get.requestBody.$ref,
     "#/components/requestBodies/CreateMachine",
@@ -3046,10 +3186,20 @@ function runSelfTests() {
   assert.match(renderedOperation, /#\/schemas\/MachineSlug/);
   assert.match(renderedOperation, /Request Body/);
   assert.match(renderedOperation, /Responses/);
+  assert.match(renderedOperation, /example-machine/);
+  assert.match(renderedOperation, /Create machine request/);
+  assert.match(renderedOperation, /created-machine/);
+  assert.match(renderedOperation, /Forbidden response/);
 
   const renderedSchema = renderGeneratedRoute(vm, appJs, "#/schemas/Error");
   assert.match(renderedSchema, /Properties/);
   assert.match(renderedSchema, /message/);
+
+  const renderedBillingSchema = renderGeneratedRoute(vm, appJs, "#/schemas/BillingAccount");
+  assert.match(renderedBillingSchema, /Active billing account/);
+  assert.match(renderedBillingSchema, /&quot;status&quot;: &quot;active&quot;/);
+  assert.match(renderedBillingSchema, /External billing example/);
+  assert.match(renderedBillingSchema, /https:\/\/example\.com\/billing-account\.json/);
 
   const renderedMapSchema = renderGeneratedRoute(vm, appJs, "#/schemas/CompoundStateValue");
   assert.match(renderedMapSchema, /Additional Properties/);
