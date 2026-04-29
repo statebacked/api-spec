@@ -196,7 +196,7 @@ function renderIndexHtml(docsData) {
         <nav class="source-links" aria-label="Source downloads">
           <a href="openapi.yaml" download>YAML</a>
           <a href="openapi.json" download>JSON</a>
-          <a href="api-docs.json" download>Docs data</a>
+          <a href="https://docs.statebacked.dev">State Backed documentation</a>
         </nav>
         <button id="theme-toggle" class="icon-button theme-toggle" type="button" aria-pressed="false">
           <span aria-hidden="true" data-theme-icon>☾</span>
@@ -1614,7 +1614,6 @@ function renderOverview() {
     renderCollectionSection("Source Downloads", [
       { title: "OpenAPI YAML", href: "openapi.yaml" },
       { title: "OpenAPI JSON", href: "openapi.json" },
-      { title: "Docs data", href: "api-docs.json" },
     ], function (item) {
       return '<a href="' + escapeHtml(item.href) + '" download>' + escapeHtml(item.title) + '</a>';
     }),
@@ -3149,8 +3148,9 @@ function runSelfTests() {
   assert.match(indexHtml, /id="nav-toggle"/);
   assert.match(indexHtml, /href="openapi\.yaml"/);
   assert.match(indexHtml, /href="openapi\.json"/);
+  assert.match(indexHtml, /href="https:\/\/docs\.statebacked\.dev">State Backed documentation<\/a>/);
+  assert.doesNotMatch(indexHtml, /Docs data/);
   assert.match(indexHtml, /data-route-pattern="#\/operations\/:slug"/);
-  assert.doesNotMatch(indexHtml, /https?:\/\//);
   assert.match(appJs, /const apiDocsData = /);
   assert.match(appJs, /"#\/schemas\/:slug"/);
   assert.match(appJs, /function buildSearchIndex/);
@@ -3176,6 +3176,7 @@ function runSelfTests() {
   const renderedOverview = renderGeneratedRoute(vm, appJs, "#/");
   assert.match(renderedOverview, /Test API/);
   assert.match(renderedOverview, /OpenAPI YAML/);
+  assert.doesNotMatch(renderedOverview, /Docs data/);
 
   const renderedOperation = renderGeneratedRoute(
     vm,
